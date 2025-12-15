@@ -6,26 +6,35 @@ import Link from 'next/link'
 interface Bet {
   id: string
   betType: string
+  betNumber: number
   stake: number
   oddsBack: number
   oddsLay: number
   liability: number
   result: string | null
   actualProfit: number | null
+  eventName: string | null
+}
+
+interface Bookmaker {
+  id: string
+  name: string
+  bonusType: string
 }
 
 interface Operation {
   id: string
   person: { id: string; name: string }
-  bookmaker: string
-  bonusType: string
+  bookmaker: Bookmaker
   status: string
-  bizumReceived: number
-  paidToPerson: number
+  bizumSent: number
+  moneyReturned: number
+  commissionPaid: number
   bets: Bet[]
   totalProfit: number
   totalLiability: number
   pendingBets: number
+  totalDeposited: number
   createdAt: string
 }
 
@@ -59,6 +68,17 @@ export default function OperationsPage() {
     return op.status === filter
   })
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Pendiente'
+      case 'qualifying': return 'Qualifying'
+      case 'freebet': return 'Freebet'
+      case 'completed': return 'Completado'
+      case 'cancelled': return 'Cancelado'
+      default: return status
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -83,16 +103,14 @@ export default function OperationsPage() {
         </div>
 
         {/* Filtros */}
-        <div className="flex gap-2 mb-6">
-          {['all', 'pending', 'in_progress', 'completed'].map(f => (
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {['all', 'pending', 'qualifying', 'freebet', 'completed'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
             >
-              {f === 'all' ? 'Todas' :
-               f === 'pending' ? 'Pendientes' :
-               f === 'in_progress' ? 'En curso' : 'Completadas'}
+              {f === 'all' ? 'Todas' : getStatusLabel(f)}
             </button>
           ))}
         </div>
@@ -118,14 +136,18 @@ export default function OperationsPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-semibold">{op.person.name}</h3>
                       <span className={`badge badge-${op.status}`}>
-                        {op.status === 'pending' ? 'Pendiente' :
-                         op.status === 'in_progress' ? 'En curso' :
-                         op.status === 'completed' ? 'Completado' : op.status}
+                        {getStatusLabel(op.status)}
                       </span>
                     </div>
-                    <p className="text-gray-400">{op.bookmaker} · {op.bonusType}</p>
+                    <p className="text-gray-400">
+                      {op.bookmaker.name}
+                      <span className="text-sm ml-2">
+                        ({op.bookmaker.bonusType === 'always' ? 'Siempre' : 'Solo si pierdes'})
+                      </span>
+                    </p>
                     <p className="text-sm text-gray-500">
-                      {new Date(op.createdAt).toLocaleDateString('es-ES')}
+                      {new Date(op.createdAt).toLocaleDateString('es-ES')} ·
+                      Bizum: {formatMoney(op.bizumSent)}
                     </p>
                   </div>
                   <div className="text-right">
@@ -147,7 +169,7 @@ export default function OperationsPage() {
                 </div>
 
                 {/* Apuestas */}
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {op.bets.map(bet => (
                     <div
                       key={bet.id}
@@ -156,14 +178,22 @@ export default function OperationsPage() {
                         bet.result === 'won' ? 'bg-green-900/30' : 'bg-red-900/30'
                       }`}
                     >
-                      <span className="font-medium">
-                        {bet.betType === 'qualifying' ? 'Qualifying' : 'Free Bet'}
-                      </span>
-                      <span className="text-gray-400 ml-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">
+                          {bet.betType === 'qualifying' ? 'Q' : 'FB'}
+                          {bet.betNumber > 1 && `#${bet.betNumber}`}
+                        </span>
+                        {bet.result && (
+                          <span className={`text-xs ${bet.result === 'won' ? 'text-green-400' : 'text-red-400'}`}>
+                            {bet.result === 'won' ? 'GANÓ' : 'PERDIÓ'}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-gray-400">
                         {formatMoney(bet.stake)} @ {bet.oddsBack}
                       </span>
                       {bet.result && (
-                        <span className={`ml-2 ${(bet.actualProfit || 0) >= 0 ? 'positive' : 'negative'}`}>
+                        <span className={`block ${(bet.actualProfit || 0) >= 0 ? 'positive' : 'negative'}`}>
                           {formatMoney(bet.actualProfit || 0)}
                         </span>
                       )}

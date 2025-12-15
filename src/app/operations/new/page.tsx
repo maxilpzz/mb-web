@@ -7,45 +7,129 @@ import Link from 'next/link'
 interface Person {
   id: string
   name: string
+  commission: number
 }
 
-const BOOKMAKERS = [
-  'Bet365', 'Codere', 'Betfair', 'William Hill', 'Betway',
-  'Sportium', '888sport', 'Luckia', 'Bwin', 'Marca Apuestas',
-  'Kirolbet', 'Retabet', 'Paf', 'Otro'
-]
+interface Bookmaker {
+  id: string
+  name: string
+  bonusType: string
+  minDeposit: number
+  maxDeposit: number
+  numDeposits: number
+  numQualifying: number
+  minOddsQualifying: number
+  bonusPercentage: number
+  maxBonus: number
+  numFreebets: number
+  freebetValue: number | null
+  minOddsFreebet: number | null
+  maxOddsFreebet: number | null
+  sameEvent: boolean
+  promoCode: string | null
+  notes: string | null
+}
+
+interface BetForm {
+  betType: 'qualifying' | 'freebet'
+  betNumber: number
+  stake: string
+  oddsBack: string
+  oddsLay: string
+  eventName: string
+}
 
 export default function NewOperation() {
   const router = useRouter()
   const [persons, setPersons] = useState<Person[]>([])
+  const [bookmakers, setBookmakers] = useState<Bookmaker[]>([])
+  const [selectedBookmaker, setSelectedBookmaker] = useState<Bookmaker | null>(null)
   const [loading, setLoading] = useState(false)
   const [showNewPerson, setShowNewPerson] = useState(false)
   const [newPersonName, setNewPersonName] = useState('')
+  const [newPersonCommission, setNewPersonCommission] = useState('')
 
   const [form, setForm] = useState({
     personId: '',
-    bookmaker: '',
-    bonusType: '',
-    bizumReceived: '',
+    bookmakerId: '',
+    bizumSent: '',
     notes: '',
-    // Qualifying bet
-    qualifyingStake: '',
-    qualifyingOddsBack: '',
-    qualifyingOddsLay: '',
-    // Free bet
-    freebetStake: '',
-    freebetOddsBack: '',
-    freebetOddsLay: '',
   })
 
+  const [qualifyingBets, setQualifyingBets] = useState<BetForm[]>([])
+  const [freebets, setFreebets] = useState<BetForm[]>([])
+
   useEffect(() => {
-    fetch('/api/persons')
-      .then(res => res.json())
-      .then(data => setPersons(data))
+    Promise.all([
+      fetch('/api/persons').then(res => res.json()),
+      fetch('/api/bookmakers').then(res => res.json())
+    ]).then(([personsData, bookmakersData]) => {
+      setPersons(personsData)
+      setBookmakers(bookmakersData)
+    })
   }, [])
+
+  const handleBookmakerChange = (bookmakerId: string) => {
+    setForm({ ...form, bookmakerId })
+    const bookmaker = bookmakers.find(b => b.id === bookmakerId)
+    setSelectedBookmaker(bookmaker || null)
+
+    if (bookmaker) {
+      // Initialize qualifying bets based on bookmaker config
+      const newQualifyingBets: BetForm[] = []
+      for (let i = 1; i <= bookmaker.numQualifying; i++) {
+        newQualifyingBets.push({
+          betType: 'qualifying',
+          betNumber: i,
+          stake: bookmaker.maxDeposit.toString(),
+          oddsBack: '',
+          oddsLay: '',
+          eventName: ''
+        })
+      }
+      setQualifyingBets(newQualifyingBets)
+
+      // Initialize freebets based on bookmaker config
+      const newFreebets: BetForm[] = []
+      for (let i = 1; i <= bookmaker.numFreebets; i++) {
+        newFreebets.push({
+          betType: 'freebet',
+          betNumber: i,
+          stake: bookmaker.freebetValue?.toString() || (bookmaker.maxBonus / bookmaker.numFreebets).toString(),
+          oddsBack: '',
+          oddsLay: '',
+          eventName: ''
+        })
+      }
+      setFreebets(newFreebets)
+
+      // Set default bizum amount
+      setForm(prev => ({
+        ...prev,
+        bizumSent: (bookmaker.maxDeposit * bookmaker.numDeposits).toString()
+      }))
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleBetChange = (
+    index: number,
+    field: keyof BetForm,
+    value: string,
+    betType: 'qualifying' | 'freebet'
+  ) => {
+    if (betType === 'qualifying') {
+      const updated = [...qualifyingBets]
+      updated[index] = { ...updated[index], [field]: value }
+      setQualifyingBets(updated)
+    } else {
+      const updated = [...freebets]
+      updated[index] = { ...updated[index], [field]: value }
+      setFreebets(updated)
+    }
   }
 
   const handleCreatePerson = async () => {
@@ -54,7 +138,10 @@ export default function NewOperation() {
     const res = await fetch('/api/persons', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newPersonName })
+      body: JSON.stringify({
+        name: newPersonName,
+        commission: parseFloat(newPersonCommission) || 0
+      })
     })
 
     if (res.ok) {
@@ -62,6 +149,7 @@ export default function NewOperation() {
       setPersons([...persons, newPerson])
       setForm({ ...form, personId: newPerson.id })
       setNewPersonName('')
+      setNewPersonCommission('')
       setShowNewPerson(false)
     }
   }
@@ -70,43 +158,48 @@ export default function NewOperation() {
     e.preventDefault()
     setLoading(true)
 
-    const bets = []
+    // Prepare bets array
+    const bets = [
+      ...qualifyingBets.filter(b => b.stake && b.oddsBack && b.oddsLay).map(b => ({
+        betType: b.betType,
+        betNumber: b.betNumber,
+        stake: parseFloat(b.stake),
+        oddsBack: parseFloat(b.oddsBack),
+        oddsLay: parseFloat(b.oddsLay),
+        eventName: b.eventName || undefined
+      })),
+      ...freebets.filter(b => b.stake && b.oddsBack && b.oddsLay).map(b => ({
+        betType: b.betType,
+        betNumber: b.betNumber,
+        stake: parseFloat(b.stake),
+        oddsBack: parseFloat(b.oddsBack),
+        oddsLay: parseFloat(b.oddsLay),
+        eventName: b.eventName || undefined
+      }))
+    ]
 
-    // Añadir qualifying bet si tiene datos
-    if (form.qualifyingStake && form.qualifyingOddsBack && form.qualifyingOddsLay) {
-      bets.push({
-        betType: 'qualifying',
-        stake: parseFloat(form.qualifyingStake),
-        oddsBack: parseFloat(form.qualifyingOddsBack),
-        oddsLay: parseFloat(form.qualifyingOddsLay)
-      })
-    }
-
-    // Añadir free bet si tiene datos
-    if (form.freebetStake && form.freebetOddsBack && form.freebetOddsLay) {
-      bets.push({
-        betType: 'freebet',
-        stake: parseFloat(form.freebetStake),
-        oddsBack: parseFloat(form.freebetOddsBack),
-        oddsLay: parseFloat(form.freebetOddsLay)
-      })
-    }
+    // Prepare deposits array
+    const deposits = selectedBookmaker ?
+      Array.from({ length: selectedBookmaker.numDeposits }, (_, i) => ({
+        amount: selectedBookmaker.maxDeposit,
+        depositNum: i + 1
+      })) : []
 
     const res = await fetch('/api/operations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         personId: form.personId,
-        bookmaker: form.bookmaker,
-        bonusType: form.bonusType,
-        bizumReceived: parseFloat(form.bizumReceived) || 0,
+        bookmakerId: form.bookmakerId,
+        bizumSent: parseFloat(form.bizumSent) || 0,
         notes: form.notes,
+        deposits,
         bets
       })
     })
 
     if (res.ok) {
-      router.push('/')
+      router.push('/operations')
     } else {
       alert('Error al crear la operación')
     }
@@ -114,7 +207,7 @@ export default function NewOperation() {
     setLoading(false)
   }
 
-  // Calcular liability en tiempo real
+  // Calculate liability in real time
   const calculateLiability = (stake: string, oddsBack: string, oddsLay: string, type: 'qualifying' | 'freebet') => {
     const s = parseFloat(stake) || 0
     const ob = parseFloat(oddsBack) || 0
@@ -129,12 +222,12 @@ export default function NewOperation() {
     return layStake * (ol - 1)
   }
 
-  const qualifyingLiability = calculateLiability(
-    form.qualifyingStake, form.qualifyingOddsBack, form.qualifyingOddsLay, 'qualifying'
+  const totalQualifyingLiability = qualifyingBets.reduce((sum, bet) =>
+    sum + calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'qualifying'), 0
   )
 
-  const freebetLiability = calculateLiability(
-    form.freebetStake, form.freebetOddsBack, form.freebetOddsLay, 'freebet'
+  const totalFreebetLiability = freebets.reduce((sum, bet) =>
+    sum + calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'freebet'), 0
   )
 
   const formatMoney = (amount: number) => {
@@ -146,7 +239,7 @@ export default function NewOperation() {
 
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold">Nueva Operación</h1>
           <Link href="/" className="text-gray-400 hover:text-white">
@@ -170,7 +263,9 @@ export default function NewOperation() {
                 >
                   <option value="">Seleccionar persona</option>
                   {persons.map(person => (
-                    <option key={person.id} value={person.id}>{person.name}</option>
+                    <option key={person.id} value={person.id}>
+                      {person.name} {person.commission > 0 && `(${person.commission}€)`}
+                    </option>
                   ))}
                 </select>
                 <button
@@ -182,7 +277,7 @@ export default function NewOperation() {
                 </button>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="space-y-3">
                 <input
                   type="text"
                   value={newPersonName}
@@ -190,54 +285,96 @@ export default function NewOperation() {
                   placeholder="Nombre de la persona"
                   className="input"
                 />
-                <button type="button" onClick={handleCreatePerson} className="btn btn-primary">
-                  Crear
-                </button>
-                <button type="button" onClick={() => setShowNewPerson(false)} className="btn btn-secondary">
-                  Cancelar
-                </button>
+                <input
+                  type="number"
+                  value={newPersonCommission}
+                  onChange={(e) => setNewPersonCommission(e.target.value)}
+                  placeholder="Comisión acordada (€)"
+                  step="0.01"
+                  className="input"
+                />
+                <div className="flex gap-2">
+                  <button type="button" onClick={handleCreatePerson} className="btn btn-primary">
+                    Crear
+                  </button>
+                  <button type="button" onClick={() => setShowNewPerson(false)} className="btn btn-secondary">
+                    Cancelar
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Casa de apuestas y bono */}
+          {/* Casa de apuestas */}
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Casa de Apuestas</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Casa de apuestas</label>
-                <select
-                  name="bookmaker"
-                  value={form.bookmaker}
-                  onChange={handleChange}
-                  className="select"
-                  required
-                >
-                  <option value="">Seleccionar</option>
-                  {BOOKMAKERS.map(b => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
+            <select
+              name="bookmakerId"
+              value={form.bookmakerId}
+              onChange={(e) => handleBookmakerChange(e.target.value)}
+              className="select"
+              required
+            >
+              <option value="">Seleccionar casa</option>
+              {bookmakers.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name} - Bono hasta {b.maxBonus}€ ({b.bonusType === 'always' ? 'Siempre' : 'Solo si pierdes'})
+                </option>
+              ))}
+            </select>
+
+            {/* Bookmaker info */}
+            {selectedBookmaker && (
+              <div className="mt-4 p-4 bg-gray-700 rounded-lg text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Depósito:</span>
+                  <span>{selectedBookmaker.minDeposit}€ - {selectedBookmaker.maxDeposit}€ {selectedBookmaker.numDeposits > 1 && `(${selectedBookmaker.numDeposits} depósitos)`}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Qualifying:</span>
+                  <span>{selectedBookmaker.numQualifying} apuesta(s), cuota mín {selectedBookmaker.minOddsQualifying}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Bono:</span>
+                  <span>{selectedBookmaker.bonusPercentage}% hasta {selectedBookmaker.maxBonus}€ en {selectedBookmaker.numFreebets} freebet(s)</span>
+                </div>
+                {selectedBookmaker.freebetValue && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Valor freebet:</span>
+                    <span>{selectedBookmaker.freebetValue}€ cada una</span>
+                  </div>
+                )}
+                {(selectedBookmaker.minOddsFreebet || selectedBookmaker.maxOddsFreebet) && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Cuota freebet:</span>
+                    <span>
+                      {selectedBookmaker.minOddsFreebet && `Mín ${selectedBookmaker.minOddsFreebet}`}
+                      {selectedBookmaker.minOddsFreebet && selectedBookmaker.maxOddsFreebet && ' - '}
+                      {selectedBookmaker.maxOddsFreebet && `Máx ${selectedBookmaker.maxOddsFreebet}`}
+                    </span>
+                  </div>
+                )}
+                {!selectedBookmaker.sameEvent && (
+                  <div className="text-yellow-400">⚠️ Freebets deben ser en eventos DISTINTOS</div>
+                )}
+                {selectedBookmaker.promoCode && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Código promo:</span>
+                    <span className="font-mono bg-gray-600 px-2 rounded">{selectedBookmaker.promoCode}</span>
+                  </div>
+                )}
+                {selectedBookmaker.notes && (
+                  <div className="text-yellow-300 mt-2">📝 {selectedBookmaker.notes}</div>
+                )}
               </div>
-              <div>
-                <label className="label">Tipo de bono</label>
-                <input
-                  type="text"
-                  name="bonusType"
-                  value={form.bonusType}
-                  onChange={handleChange}
-                  placeholder="Ej: Apuesta 100€ y recibe 50€"
-                  className="input"
-                  required
-                />
-              </div>
-            </div>
+            )}
+
             <div className="mt-4">
-              <label className="label">Bizum recibido</label>
+              <label className="label">Bizum enviado (€)</label>
               <input
                 type="number"
-                name="bizumReceived"
-                value={form.bizumReceived}
+                name="bizumSent"
+                value={form.bizumSent}
                 onChange={handleChange}
                 placeholder="0"
                 step="0.01"
@@ -246,101 +383,134 @@ export default function NewOperation() {
             </div>
           </div>
 
-          {/* Qualifying Bet */}
-          <div className="card">
-            <h2 className="text-lg font-semibold mb-4">Apuesta Qualifying (Desbloqueo)</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="label">Stake (€)</label>
-                <input
-                  type="number"
-                  name="qualifyingStake"
-                  value={form.qualifyingStake}
-                  onChange={handleChange}
-                  placeholder="100"
-                  step="0.01"
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="label">Cuota Back</label>
-                <input
-                  type="number"
-                  name="qualifyingOddsBack"
-                  value={form.qualifyingOddsBack}
-                  onChange={handleChange}
-                  placeholder="2.0"
-                  step="0.01"
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="label">Cuota Lay</label>
-                <input
-                  type="number"
-                  name="qualifyingOddsLay"
-                  value={form.qualifyingOddsLay}
-                  onChange={handleChange}
-                  placeholder="2.05"
-                  step="0.01"
-                  className="input"
-                />
-              </div>
+          {/* Qualifying Bets */}
+          {qualifyingBets.length > 0 && (
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-4">
+                Apuesta(s) Qualifying ({qualifyingBets.length})
+              </h2>
+              {qualifyingBets.map((bet, index) => (
+                <div key={index} className="mb-4 p-4 bg-gray-700 rounded-lg">
+                  {qualifyingBets.length > 1 && (
+                    <h3 className="text-sm font-medium mb-3 text-gray-400">Qualifying #{bet.betNumber}</h3>
+                  )}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="label">Stake (€)</label>
+                      <input
+                        type="number"
+                        value={bet.stake}
+                        onChange={(e) => handleBetChange(index, 'stake', e.target.value, 'qualifying')}
+                        placeholder="100"
+                        step="0.01"
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Cuota Back</label>
+                      <input
+                        type="number"
+                        value={bet.oddsBack}
+                        onChange={(e) => handleBetChange(index, 'oddsBack', e.target.value, 'qualifying')}
+                        placeholder={selectedBookmaker?.minOddsQualifying.toString() || '2.0'}
+                        step="0.01"
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Cuota Lay</label>
+                      <input
+                        type="number"
+                        value={bet.oddsLay}
+                        onChange={(e) => handleBetChange(index, 'oddsLay', e.target.value, 'qualifying')}
+                        placeholder="2.05"
+                        step="0.01"
+                        className="input"
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={bet.eventName}
+                    onChange={(e) => handleBetChange(index, 'eventName', e.target.value, 'qualifying')}
+                    placeholder="Evento (opcional)"
+                    className="input mt-3"
+                  />
+                  {parseFloat(bet.oddsLay) > 0 && (
+                    <p className="mt-2 text-yellow-400 text-sm">
+                      Liability: {formatMoney(calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'qualifying'))}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
-            {qualifyingLiability > 0 && (
-              <p className="mt-2 text-yellow-400">
-                Liability: {formatMoney(qualifyingLiability)}
-              </p>
-            )}
-          </div>
+          )}
 
-          {/* Free Bet */}
-          <div className="card">
-            <h2 className="text-lg font-semibold mb-4">Free Bet (Bono)</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="label">Valor Free Bet (€)</label>
-                <input
-                  type="number"
-                  name="freebetStake"
-                  value={form.freebetStake}
-                  onChange={handleChange}
-                  placeholder="50"
-                  step="0.01"
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="label">Cuota Back</label>
-                <input
-                  type="number"
-                  name="freebetOddsBack"
-                  value={form.freebetOddsBack}
-                  onChange={handleChange}
-                  placeholder="5.0"
-                  step="0.01"
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="label">Cuota Lay</label>
-                <input
-                  type="number"
-                  name="freebetOddsLay"
-                  value={form.freebetOddsLay}
-                  onChange={handleChange}
-                  placeholder="5.2"
-                  step="0.01"
-                  className="input"
-                />
-              </div>
+          {/* Free Bets */}
+          {freebets.length > 0 && (
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-4">
+                Free Bet(s) ({freebets.length})
+              </h2>
+              {freebets.map((bet, index) => (
+                <div key={index} className="mb-4 p-4 bg-gray-700 rounded-lg">
+                  {freebets.length > 1 && (
+                    <h3 className="text-sm font-medium mb-3 text-gray-400">
+                      Freebet #{bet.betNumber}
+                      {!selectedBookmaker?.sameEvent && ' - Evento distinto requerido'}
+                    </h3>
+                  )}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="label">Valor (€)</label>
+                      <input
+                        type="number"
+                        value={bet.stake}
+                        onChange={(e) => handleBetChange(index, 'stake', e.target.value, 'freebet')}
+                        placeholder="50"
+                        step="0.01"
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Cuota Back</label>
+                      <input
+                        type="number"
+                        value={bet.oddsBack}
+                        onChange={(e) => handleBetChange(index, 'oddsBack', e.target.value, 'freebet')}
+                        placeholder="5.0"
+                        step="0.01"
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Cuota Lay</label>
+                      <input
+                        type="number"
+                        value={bet.oddsLay}
+                        onChange={(e) => handleBetChange(index, 'oddsLay', e.target.value, 'freebet')}
+                        placeholder="5.2"
+                        step="0.01"
+                        className="input"
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={bet.eventName}
+                    onChange={(e) => handleBetChange(index, 'eventName', e.target.value, 'freebet')}
+                    placeholder={!selectedBookmaker?.sameEvent ? 'Evento (DISTINTO requerido)' : 'Evento (opcional)'}
+                    className="input mt-3"
+                  />
+                  {parseFloat(bet.oddsLay) > 0 && (
+                    <p className="mt-2 text-yellow-400 text-sm">
+                      Liability: {formatMoney(calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'freebet'))}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
-            {freebetLiability > 0 && (
-              <p className="mt-2 text-yellow-400">
-                Liability: {formatMoney(freebetLiability)}
-              </p>
-            )}
-          </div>
+          )}
 
           {/* Notas */}
           <div className="card">
@@ -356,18 +526,29 @@ export default function NewOperation() {
           </div>
 
           {/* Resumen */}
-          {(qualifyingLiability > 0 || freebetLiability > 0) && (
+          {(totalQualifyingLiability > 0 || totalFreebetLiability > 0) && (
             <div className="card bg-gray-700">
               <h2 className="text-lg font-semibold mb-2">Resumen</h2>
-              <p>Liability total: <span className="text-yellow-400 font-bold">{formatMoney(qualifyingLiability + freebetLiability)}</span></p>
+              <div className="space-y-1">
+                <p>Bizum a enviar: <span className="font-bold">{formatMoney(parseFloat(form.bizumSent) || 0)}</span></p>
+                {totalQualifyingLiability > 0 && (
+                  <p>Liability qualifying: <span className="text-yellow-400">{formatMoney(totalQualifyingLiability)}</span></p>
+                )}
+                {totalFreebetLiability > 0 && (
+                  <p>Liability freebet: <span className="text-yellow-400">{formatMoney(totalFreebetLiability)}</span></p>
+                )}
+                <p className="pt-2 border-t border-gray-600">
+                  Liability total: <span className="text-yellow-400 font-bold">{formatMoney(totalQualifyingLiability + totalFreebetLiability)}</span>
+                </p>
+              </div>
             </div>
           )}
 
           {/* Submit */}
           <button
             type="submit"
-            disabled={loading}
-            className="btn btn-primary w-full py-3 text-lg"
+            disabled={loading || !form.personId || !form.bookmakerId}
+            className="btn btn-primary w-full py-3 text-lg disabled:opacity-50"
           >
             {loading ? 'Creando...' : 'Crear Operación'}
           </button>

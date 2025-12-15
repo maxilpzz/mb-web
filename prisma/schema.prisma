@@ -16,6 +16,7 @@ model Person {
   name        String
   phone       String?  // Teléfono para identificar en Bizum
   notes       String?
+  commission  Float    @default(0) // Comisión acordada por defecto con esta persona
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -23,74 +24,127 @@ model Person {
   transactions Transaction[]
 }
 
-// Cada operación de bono (qualifying + free bet)
-model Operation {
+// Casas de apuestas con configuración de bonos
+model Bookmaker {
   id              String   @id @default(cuid())
-  personId        String
-  person          Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  name            String   @unique
 
-  bookmaker       String   // Casa de apuestas (Bet365, Codere, etc.)
-  bonusType       String   // Tipo de bono ("Apuesta 100€ y recibe 50€")
-  status          String   @default("pending") // pending, in_progress, completed, cancelled
+  // Tipo de bono
+  bonusType       String   // "always" (siempre dan bono) o "only_if_lost" (solo si pierdes)
 
-  bizumReceived   Float    @default(0) // Dinero recibido por Bizum
-  paidToPerson    Float    @default(0) // Dinero pagado a la persona
+  // Configuración del depósito
+  minDeposit      Float    // Depósito mínimo
+  maxDeposit      Float    // Depósito máximo para el bono
+  numDeposits     Int      @default(1) // Número de depósitos (Sportium: 2)
 
-  notes           String?
+  // Configuración qualifying
+  numQualifying   Int      @default(1) // Número de apuestas qualifying
+  minOddsQualifying Float  @default(1.5) // Cuota mínima qualifying
+
+  // Configuración freebet
+  bonusPercentage Float    @default(100) // Porcentaje del bono (Winamax: 150%)
+  maxBonus        Float    // Máximo del bono en euros
+  numFreebets     Int      @default(1) // Número de freebets (Retabet: 6)
+  freebetValue    Float?   // Valor de cada freebet si son fijas (Retabet: 25€)
+  minOddsFreebet  Float?   // Cuota mínima freebet
+  maxOddsFreebet  Float?   // Cuota máxima freebet (Retabet: 3.50)
+  sameEvent       Boolean  @default(true) // Pueden ser al mismo evento
+
+  // Plazos
+  daysToDeposit   Int?     // Días para depositar
+  daysToQualify   Int?     // Días para hacer qualifying
+  daysFreebetValid Int?    // Días de validez de freebet
+
+  // Otros
+  promoCode       String?  // Código promocional
+  notes           String?  // Notas importantes (ej: "mismo dispositivo")
+  isActive        Boolean  @default(true)
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  bets            Bet[]
+  operations      Operation[]
 }
 
-// Cada apuesta individual (qualifying o free bet)
+// Cada operación de bono
+model Operation {
+  id              String    @id @default(cuid())
+  personId        String
+  person          Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  bookmakerId     String
+  bookmaker       Bookmaker @relation(fields: [bookmakerId], references: [id])
+
+  status          String    @default("pending") // pending, qualifying, freebet, completed, cancelled
+
+  // Dinero
+  bizumSent       Float     @default(0) // Dinero que TÚ enviaste por Bizum
+  moneyReturned   Float     @default(0) // Dinero que te devolvió la persona
+  commissionPaid  Float     @default(0) // Comisión pagada a la persona
+
+  // Depósitos (puede haber varios, ej: Sportium)
+  deposits        Deposit[]
+
+  // Apuestas
+  bets            Bet[]
+
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Depósitos (para casas que requieren múltiples depósitos como Sportium)
+model Deposit {
+  id          String    @id @default(cuid())
+  operationId String
+  operation   Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  amount      Float     // Cantidad depositada
+  depositNum  Int       // Número de depósito (1, 2, etc.)
+  completed   Boolean   @default(false)
+
+  createdAt   DateTime  @default(now())
+}
+
+// Cada apuesta individual (qualifying o freebet)
 model Bet {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   operationId     String
   operation       Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
 
-  betType         String   // "qualifying" o "freebet"
-  stake           Float    // Cantidad apostada
-  oddsBack        Float    // Cuota en la casa
-  oddsLay         Float    // Cuota en el exchange
+  betType         String    // "qualifying" o "freebet"
+  betNumber       Int       @default(1) // Número de apuesta (1, 2, 3... para múltiples)
 
-  // Calculados automáticamente pero guardados para referencia
-  liability       Float    @default(0) // Lo que arriesgas en exchange
-  expectedProfit  Float    @default(0) // Beneficio esperado
+  stake           Float     // Cantidad apostada
+  oddsBack        Float     // Cuota en la casa
+  oddsLay         Float     // Cuota en el exchange
 
-  result          String?  // "won" (ganó en casa), "lost" (perdió en casa), null (pendiente)
-  actualProfit    Float?   // Beneficio real después del resultado
+  // Calculados automáticamente
+  liability       Float     @default(0) // Lo que arriesgas en exchange
+  expectedProfit  Float     @default(0) // Beneficio esperado
 
-  eventName       String?  // Nombre del evento (opcional)
+  result          String?   // "won" (ganó en casa), "lost" (perdió en casa), null (pendiente)
+  actualProfit    Float?    // Beneficio real después del resultado
+
+  eventName       String?   // Nombre del evento
   eventDate       DateTime? // Fecha del evento
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
-// Transacciones (Bizums, transferencias)
+// Transacciones (Bizums, transferencias) - para importar de Revolut
 model Transaction {
   id          String   @id @default(cuid())
   personId    String?
   person      Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
 
-  type        String   // "bizum_in", "bizum_out", "transfer_in", "transfer_out"
+  type        String   // "bizum_sent", "bizum_received", "transfer"
   amount      Float
   description String?
   date        DateTime @default(now())
 
-  // Para importación de CSV
   revolutId   String?  @unique // ID único de Revolut para evitar duplicados
 
-  createdAt   DateTime @default(now())
-}
-
-// Casas de apuestas disponibles
-model Bookmaker {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  bonus       String?  // Descripción del bono
-  expectedValue Float? // Valor esperado del bono
-  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 }

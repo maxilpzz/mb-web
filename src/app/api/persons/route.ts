@@ -8,7 +8,8 @@ export async function GET() {
       include: {
         operations: {
           include: {
-            bets: true
+            bets: true,
+            bookmaker: true
           }
         },
         transactions: true
@@ -17,10 +18,14 @@ export async function GET() {
     })
 
     // Calcular saldo de cada persona
+    // Saldo = bizumSent - moneyReturned - commissionPaid
+    // Si es positivo, la persona te debe dinero
+    // Si es negativo, tú le debes dinero
     const personsWithBalance = persons.map(person => {
-      const totalBizumReceived = person.operations.reduce((sum, op) => sum + op.bizumReceived, 0)
-      const totalPaid = person.operations.reduce((sum, op) => sum + op.paidToPerson, 0)
-      const balance = totalBizumReceived - totalPaid
+      const totalBizumSent = person.operations.reduce((sum, op) => sum + op.bizumSent, 0)
+      const totalMoneyReturned = person.operations.reduce((sum, op) => sum + op.moneyReturned, 0)
+      const totalCommissionPaid = person.operations.reduce((sum, op) => sum + op.commissionPaid, 0)
+      const balance = totalBizumSent - totalMoneyReturned - totalCommissionPaid
 
       const totalProfit = person.operations.reduce((sum, op) => {
         return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)
@@ -28,8 +33,9 @@ export async function GET() {
 
       return {
         ...person,
-        totalBizumReceived,
-        totalPaid,
+        totalBizumSent,
+        totalMoneyReturned,
+        totalCommissionPaid,
         balance, // Positivo = te debe, Negativo = le debes
         totalProfit,
         operationsCount: person.operations.length
@@ -47,14 +53,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, phone, notes } = body
+    const { name, phone, notes, commission } = body
 
     if (!name) {
       return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
     }
 
     const person = await prisma.person.create({
-      data: { name, phone, notes }
+      data: {
+        name,
+        phone,
+        notes,
+        commission: commission || 0
+      }
     })
 
     return NextResponse.json(person, { status: 201 })

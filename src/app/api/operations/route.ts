@@ -17,6 +17,8 @@ export async function GET(request: Request) {
       where,
       include: {
         person: true,
+        bookmaker: true,
+        deposits: true,
         bets: true
       },
       orderBy: { createdAt: 'desc' }
@@ -27,12 +29,14 @@ export async function GET(request: Request) {
       const totalProfit = op.bets.reduce((sum, bet) => sum + (bet.actualProfit || 0), 0)
       const totalLiability = op.bets.reduce((sum, bet) => sum + bet.liability, 0)
       const pendingBets = op.bets.filter(bet => bet.result === null).length
+      const totalDeposited = op.deposits.reduce((sum, dep) => sum + dep.amount, 0)
 
       return {
         ...op,
         totalProfit,
         totalLiability,
-        pendingBets
+        pendingBets,
+        totalDeposited
       }
     })
 
@@ -47,23 +51,48 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { personId, bookmaker, bonusType, bizumReceived, bets, notes } = body
+    const { personId, bookmakerId, bizumSent, moneyReturned, commissionPaid, deposits, bets, notes } = body
 
-    if (!personId || !bookmaker || !bonusType) {
+    if (!personId || !bookmakerId) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 
-    // Crear operación con apuestas
+    // Verificar que la casa de apuestas existe
+    const bookmaker = await prisma.bookmaker.findUnique({
+      where: { id: bookmakerId }
+    })
+
+    if (!bookmaker) {
+      return NextResponse.json({ error: 'Casa de apuestas no encontrada' }, { status: 404 })
+    }
+
+    // Crear operación con depósitos y apuestas
     const operation = await prisma.operation.create({
       data: {
         personId,
-        bookmaker,
-        bonusType,
-        bizumReceived: bizumReceived || 0,
+        bookmakerId,
+        bizumSent: bizumSent || 0,
+        moneyReturned: moneyReturned || 0,
+        commissionPaid: commissionPaid || 0,
         notes,
-        status: 'in_progress',
+        status: 'pending',
+        deposits: {
+          create: deposits?.map((dep: { amount: number; depositNum: number }) => ({
+            amount: dep.amount,
+            depositNum: dep.depositNum,
+            completed: false
+          })) || []
+        },
         bets: {
-          create: bets?.map((bet: { betType: string; stake: number; oddsBack: number; oddsLay: number; eventName?: string; eventDate?: string }) => {
+          create: bets?.map((bet: {
+            betType: string;
+            betNumber?: number;
+            stake: number;
+            oddsBack: number;
+            oddsLay: number;
+            eventName?: string;
+            eventDate?: string
+          }) => {
             const layStake = bet.betType === 'qualifying'
               ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
               : calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
@@ -72,6 +101,7 @@ export async function POST(request: Request) {
 
             return {
               betType: bet.betType,
+              betNumber: bet.betNumber || 1,
               stake: bet.stake,
               oddsBack: bet.oddsBack,
               oddsLay: bet.oddsLay,
@@ -85,6 +115,8 @@ export async function POST(request: Request) {
       },
       include: {
         person: true,
+        bookmaker: true,
+        deposits: true,
         bets: true
       }
     })

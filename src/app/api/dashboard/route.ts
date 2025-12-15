@@ -8,7 +8,9 @@ export async function GET() {
     const operations = await prisma.operation.findMany({
       include: {
         bets: true,
-        person: true
+        person: true,
+        bookmaker: true,
+        deposits: true
       }
     })
 
@@ -21,9 +23,10 @@ export async function GET() {
       return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)
     }, 0)
 
-    const totalBizumReceived = operations.reduce((sum, op) => sum + op.bizumReceived, 0)
-    const totalPaid = operations.reduce((sum, op) => sum + op.paidToPerson, 0)
-    const pendingToCollect = totalBizumReceived - totalPaid
+    const totalBizumSent = operations.reduce((sum, op) => sum + op.bizumSent, 0)
+    const totalMoneyReturned = operations.reduce((sum, op) => sum + op.moneyReturned, 0)
+    const totalCommissionPaid = operations.reduce((sum, op) => sum + op.commissionPaid, 0)
+    const pendingToCollect = totalBizumSent - totalMoneyReturned - totalCommissionPaid
 
     const totalLiability = operations
       .filter(op => op.status !== 'completed' && op.status !== 'cancelled')
@@ -41,12 +44,13 @@ export async function GET() {
     })
 
     const personsWithDebt = persons.map(person => {
-      const received = person.operations.reduce((sum, op) => sum + op.bizumReceived, 0)
-      const paid = person.operations.reduce((sum, op) => sum + op.paidToPerson, 0)
+      const sent = person.operations.reduce((sum, op) => sum + op.bizumSent, 0)
+      const returned = person.operations.reduce((sum, op) => sum + op.moneyReturned, 0)
+      const commission = person.operations.reduce((sum, op) => sum + op.commissionPaid, 0)
       return {
         id: person.id,
         name: person.name,
-        balance: received - paid
+        balance: sent - returned - commission // Positivo = te debe
       }
     }).filter(p => Math.abs(p.balance) > 0.01)
 
@@ -57,23 +61,44 @@ export async function GET() {
       .map(op => ({
         id: op.id,
         personName: op.person.name,
-        bookmaker: op.bookmaker,
+        bookmakerName: op.bookmaker.name,
         status: op.status,
         profit: op.bets.reduce((sum, bet) => sum + (bet.actualProfit || 0), 0),
         createdAt: op.createdAt
       }))
+
+    // Estadísticas por casa de apuestas
+    const bookmakerStats = await prisma.bookmaker.findMany({
+      where: { isActive: true },
+      include: {
+        operations: {
+          include: { bets: true }
+        }
+      }
+    })
+
+    const bookmakerSummary = bookmakerStats.map(bm => ({
+      id: bm.id,
+      name: bm.name,
+      operationsCount: bm.operations.length,
+      totalProfit: bm.operations.reduce((sum, op) =>
+        sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0), 0
+      )
+    }))
 
     return NextResponse.json({
       totalOperations,
       completedOperations,
       pendingOperations,
       totalProfit,
-      totalBizumReceived,
-      totalPaid,
+      totalBizumSent,
+      totalMoneyReturned,
+      totalCommissionPaid,
       pendingToCollect,
       totalLiability,
       personsWithDebt,
-      recentOperations
+      recentOperations,
+      bookmakerSummary
     })
   } catch (error) {
     console.error('Error fetching dashboard:', error)
