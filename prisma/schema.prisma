@@ -1,0 +1,96 @@
+// Esquema de base de datos para Matched Betting
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Personas con las que haces operaciones
+model Person {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String?  // Teléfono para identificar en Bizum
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  operations   Operation[]
+  transactions Transaction[]
+}
+
+// Cada operación de bono (qualifying + free bet)
+model Operation {
+  id              String   @id @default(cuid())
+  personId        String
+  person          Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  bookmaker       String   // Casa de apuestas (Bet365, Codere, etc.)
+  bonusType       String   // Tipo de bono ("Apuesta 100€ y recibe 50€")
+  status          String   @default("pending") // pending, in_progress, completed, cancelled
+
+  bizumReceived   Float    @default(0) // Dinero recibido por Bizum
+  paidToPerson    Float    @default(0) // Dinero pagado a la persona
+
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bets            Bet[]
+}
+
+// Cada apuesta individual (qualifying o free bet)
+model Bet {
+  id              String   @id @default(cuid())
+  operationId     String
+  operation       Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  betType         String   // "qualifying" o "freebet"
+  stake           Float    // Cantidad apostada
+  oddsBack        Float    // Cuota en la casa
+  oddsLay         Float    // Cuota en el exchange
+
+  // Calculados automáticamente pero guardados para referencia
+  liability       Float    @default(0) // Lo que arriesgas en exchange
+  expectedProfit  Float    @default(0) // Beneficio esperado
+
+  result          String?  // "won" (ganó en casa), "lost" (perdió en casa), null (pendiente)
+  actualProfit    Float?   // Beneficio real después del resultado
+
+  eventName       String?  // Nombre del evento (opcional)
+  eventDate       DateTime? // Fecha del evento
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Transacciones (Bizums, transferencias)
+model Transaction {
+  id          String   @id @default(cuid())
+  personId    String?
+  person      Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  type        String   // "bizum_in", "bizum_out", "transfer_in", "transfer_out"
+  amount      Float
+  description String?
+  date        DateTime @default(now())
+
+  // Para importación de CSV
+  revolutId   String?  @unique // ID único de Revolut para evitar duplicados
+
+  createdAt   DateTime @default(now())
+}
+
+// Casas de apuestas disponibles
+model Bookmaker {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  bonus       String?  // Descripción del bono
+  expectedValue Float? // Valor esperado del bono
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
