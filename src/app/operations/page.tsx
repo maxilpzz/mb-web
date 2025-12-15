@@ -175,7 +175,7 @@ export default function OperationsPage() {
                       key={bet.id}
                       className={`text-sm p-2 rounded ${
                         bet.result === null ? 'bg-gray-700' :
-                        bet.result === 'won' ? 'bg-green-900/30' : 'bg-red-900/30'
+                        bet.result === 'won' ? 'bg-red-900/30' : 'bg-green-900/30'
                       }`}
                     >
                       <div className="flex justify-between items-center">
@@ -184,8 +184,8 @@ export default function OperationsPage() {
                           {bet.betNumber > 1 && `#${bet.betNumber}`}
                         </span>
                         {bet.result && (
-                          <span className={`text-xs ${bet.result === 'won' ? 'text-green-400' : 'text-red-400'}`}>
-                            {bet.result === 'won' ? 'GANÓ' : 'PERDIÓ'}
+                          <span className={`text-xs ${bet.result === 'won' ? 'text-red-400' : 'text-green-400'}`}>
+                            {bet.result === 'won' ? 'CASA' : 'EXCH'}
                           </span>
                         )}
                       </div>

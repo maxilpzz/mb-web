@@ -68,8 +68,8 @@ function BetCard({
     <div
       className={`p-4 rounded-lg ${
         bet.result === null ? 'bg-gray-700' :
-        bet.result === 'won' ? 'bg-green-900/30 border border-green-700' :
-        'bg-red-900/30 border border-red-700'
+        bet.result === 'won' ? 'bg-red-900/30 border border-red-700' :
+        'bg-green-900/30 border border-green-700'
       }`}
     >
       <div className="flex justify-between items-start mb-2">
@@ -83,8 +83,8 @@ function BetCard({
           )}
         </div>
         {bet.result && (
-          <span className={`badge ${bet.result === 'won' ? 'badge-completed' : 'badge-cancelled'}`}>
-            {bet.result === 'won' ? 'Ganó en casa' : 'Perdió en casa'}
+          <span className={`badge ${bet.result === 'won' ? 'badge-cancelled' : 'badge-completed'}`}>
+            {bet.result === 'won' ? 'Quedó en casa' : 'Quedó en exchange'}
           </span>
         )}
       </div>
@@ -121,21 +121,21 @@ function BetCard({
         </div>
       ) : (
         <div className="mt-4 pt-4 border-t border-gray-600">
-          <p className="text-sm text-gray-400 mb-2">¿Qué resultado tuvo en la casa de apuestas?</p>
+          <p className="text-sm text-gray-400 mb-2">¿Dónde quedó el dinero?</p>
           <div className="flex gap-2">
             <button
-              onClick={() => onSetResult(bet.id, 'won')}
+              onClick={() => onSetResult(bet.id, 'lost')}
               className="btn btn-success"
               disabled={disabled}
             >
-              Ganó en casa
+              En mi exchange ✓
             </button>
             <button
-              onClick={() => onSetResult(bet.id, 'lost')}
+              onClick={() => onSetResult(bet.id, 'won')}
               className="btn btn-danger"
               disabled={disabled}
             >
-              Perdió en casa
+              En la casa ✗
             </button>
           </div>
         </div>
