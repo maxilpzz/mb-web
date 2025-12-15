@@ -16,8 +16,14 @@ Aplicación web para gestionar operaciones de matched betting con múltiples per
 8. **Pago a Juan**: Le pagas una cantidad fija acordada por prestar su DNI
 
 ### Cálculo de saldos
-- Si **ganó en la casa** → dinero en cuenta de Juan → **Juan te debe**
-- Si **perdió en la casa** → dinero en tu exchange → **Tú le debes** (su comisión)
+- Si **quedó en la casa** → dinero en cuenta de Juan → **Juan te debe** (ROJO en la app)
+- Si **quedó en exchange** → dinero en tu Betfair → mejor para ti (VERDE en la app)
+
+### Estados de una operación
+1. `pending` → Operación creada, qualifying sin empezar
+2. `qualifying` → Trabajando en qualifying bet(s)
+3. `freebet` → Qualifying completadas, trabajando en freebet(s)
+4. `completed` → Todas las apuestas resueltas
 
 ---
 
@@ -111,29 +117,33 @@ src/
 ├── app/
 │   ├── api/
 │   │   ├── bets/[id]/      # Actualizar resultado de apuestas
+│   │   ├── bookmakers/     # Lista de casas de apuestas
 │   │   ├── dashboard/      # Estadísticas generales
 │   │   ├── import/         # Importar CSV de Revolut
 │   │   ├── operations/     # CRUD operaciones
+│   │   │   └── [id]/       # Operación individual (GET, PATCH, DELETE)
 │   │   └── persons/        # CRUD personas
 │   ├── import/             # Página importar CSV
 │   ├── operations/         # Lista y detalle de operaciones
-│   │   ├── [id]/           # Detalle de operación
-│   │   └── new/            # Nueva operación
-│   ├── persons/            # Lista de personas
+│   │   ├── [id]/           # Detalle de operación con progreso visual
+│   │   └── new/            # Nueva operación (auto-rellena según bookmaker)
+│   ├── persons/            # Lista de personas con comisión
 │   └── page.tsx            # Dashboard principal
 ├── lib/
 │   ├── calculations.ts     # Fórmulas de matched betting
 │   └── db.ts               # Cliente Prisma
 prisma/
-└── schema.prisma           # Modelos de base de datos
+├── schema.prisma           # Modelos de base de datos
+└── seed.ts                 # Precarga 6 casas de apuestas
 ```
 
 ## Modelos de datos
-- **Person**: Personas con las que haces MB
-- **Operation**: Cada operación de bono (persona + casa de apuestas)
-- **Bet**: Apuestas individuales (qualifying o freebet)
+- **Person**: Personas con las que haces MB (incluye comisión acordada)
+- **Bookmaker**: Casas de apuestas con toda su configuración de bonos
+- **Operation**: Cada operación de bono (persona + bookmaker)
+- **Deposit**: Depósitos por operación (Sportium necesita 2)
+- **Bet**: Apuestas individuales (qualifying o freebet, con betNumber para múltiples)
 - **Transaction**: Bizums importados de Revolut
-- **Bookmaker**: Casas de apuestas disponibles
 
 ## Variables de entorno (.env)
 ```
@@ -147,6 +157,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ```bash
 npm run dev          # Desarrollo local
 npm run build        # Build (incluye prisma generate)
+npm run seed         # Precargar casas de apuestas
 npx prisma studio    # Ver/editar datos en navegador
 npx prisma migrate dev --name nombre  # Nueva migración
 ```
@@ -157,25 +168,27 @@ npx prisma migrate dev --name nombre  # Nueva migración
 - **GitHub Repo**: https://github.com/maxilpzz/mb-web
 - **Vercel Dashboard**: https://vercel.com (buscar proyecto mb-web)
 
-## Estado actual
+## Estado actual (15 Dic 2024)
 - [x] App funcional con features básicas
 - [x] Base de datos en Supabase
-- [x] Repositorio en GitHub
-- [x] Deploy en Vercel completado
-- [x] Auto-deploy configurado
-- [ ] Ajustar app para soportar múltiples qualifying/freebets
-- [ ] Cambiar "Bizum recibido" por "Bizum enviado"
-- [ ] Añadir campo "comisión pagada a persona"
-- [ ] Precargar casas de apuestas con sus bonos
+- [x] Repositorio en GitHub con auto-deploy a Vercel
+- [x] **Soporte múltiples qualifying/freebets** (Sportium 2+2, Retabet 1+6)
+- [x] **Modelo Bookmaker** con configuración completa de bonos
+- [x] **6 casas precargadas** con sus bonos y códigos
+- [x] **Campos corregidos**: bizumSent, moneyReturned, commissionPaid
+- [x] **Formulario inteligente**: auto-rellena según casa seleccionada
+- [x] **Progreso visual**: barras de progreso qualifying/freebet
+- [x] **Flujo de estados**: pending → qualifying → freebet → completed
+- [x] **Colores correctos**: exchange=verde (bueno), casa=rojo (malo)
+- [x] **Eliminar operación** con confirmación
 
 ## Próximas mejoras posibles
-- Soporte para múltiples depósitos (Sportium)
-- Soporte para múltiples freebets (Retabet: 6, William Hill: 5)
-- Tipo de bono: "siempre" vs "solo si pierde"
 - Calculadora de cuotas integrada
 - Autenticación con Supabase Auth
 - Gráficos de beneficios
 - Exportar datos a Excel
+- Importar CSV de Revolut para reconciliar bizums
+- Notificaciones cuando caducan freebets
 
 ## MCP Servers configurados
 Ver ~/.claude/settings.json:
@@ -183,3 +196,24 @@ Ver ~/.claude/settings.json:
 - github: Gestión de repos
 - memory: Memoria persistente
 - playwright: Automatización de navegador
+
+---
+
+## Última sesión (15 Dic 2024)
+
+### Cambios realizados:
+1. **Nuevo modelo de datos** con Bookmaker, Deposit, y campos corregidos
+2. **Seed de 6 casas de apuestas** con toda su configuración
+3. **Formulario de nueva operación** que auto-genera campos según la casa
+4. **Página de detalle mejorada** con:
+   - Barras de progreso para qualifying y freebet
+   - Secciones separadas para cada tipo de apuesta
+   - Botones bloqueados hasta completar fase anterior
+   - Colores: exchange=verde, casa=rojo
+   - Botón eliminar operación con confirmación
+5. **Flujo de estados automático**: el estado cambia según las apuestas resueltas
+
+### Para continuar:
+- La app está funcional y desplegada
+- Puedes crear operaciones, marcar resultados, ver progreso
+- Para añadir nueva casa: editar `prisma/seed.ts` y ejecutar `npm run seed`
