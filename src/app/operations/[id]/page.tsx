@@ -52,6 +52,98 @@ interface Operation {
   createdAt: string
 }
 
+// Componente para mostrar una apuesta individual
+function BetCard({
+  bet,
+  onSetResult,
+  formatMoney,
+  disabled = false
+}: {
+  bet: Bet
+  onSetResult: (betId: string, result: 'won' | 'lost') => void
+  formatMoney: (amount: number) => string
+  disabled?: boolean
+}) {
+  return (
+    <div
+      className={`p-4 rounded-lg ${
+        bet.result === null ? 'bg-gray-700' :
+        bet.result === 'won' ? 'bg-green-900/30 border border-green-700' :
+        'bg-red-900/30 border border-red-700'
+      }`}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div>
+          <h3 className="font-semibold">
+            {bet.betType === 'qualifying' ? 'Qualifying' : 'Free Bet'}
+            {bet.betNumber > 1 && ` #${bet.betNumber}`}
+          </h3>
+          {bet.eventName && (
+            <p className="text-sm text-gray-400">{bet.eventName}</p>
+          )}
+        </div>
+        {bet.result && (
+          <span className={`badge ${bet.result === 'won' ? 'badge-completed' : 'badge-cancelled'}`}>
+            {bet.result === 'won' ? 'Ganó en casa' : 'Perdió en casa'}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+        <div>
+          <p className="text-gray-400">Stake</p>
+          <p className="font-medium">{formatMoney(bet.stake)}</p>
+        </div>
+        <div>
+          <p className="text-gray-400">Cuota Back</p>
+          <p className="font-medium">{bet.oddsBack}</p>
+        </div>
+        <div>
+          <p className="text-gray-400">Cuota Lay</p>
+          <p className="font-medium">{bet.oddsLay}</p>
+        </div>
+        <div>
+          <p className="text-gray-400">Liability</p>
+          <p className="font-medium text-yellow-400">{formatMoney(bet.liability)}</p>
+        </div>
+        <div>
+          <p className="text-gray-400">Esperado</p>
+          <p className="font-medium text-blue-400">{formatMoney(bet.expectedProfit)}</p>
+        </div>
+      </div>
+
+      {bet.result ? (
+        <div className="mt-4 pt-4 border-t border-gray-600">
+          <p className="text-sm text-gray-400">Resultado final</p>
+          <p className={`text-xl font-bold ${(bet.actualProfit || 0) >= 0 ? 'positive' : 'negative'}`}>
+            {formatMoney(bet.actualProfit || 0)}
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 pt-4 border-t border-gray-600">
+          <p className="text-sm text-gray-400 mb-2">¿Qué resultado tuvo en la casa de apuestas?</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onSetResult(bet.id, 'won')}
+              className="btn btn-success"
+              disabled={disabled}
+            >
+              Ganó en casa
+            </button>
+            <button
+              onClick={() => onSetResult(bet.id, 'lost')}
+              className="btn btn-danger"
+              disabled={disabled}
+            >
+              Perdió en casa
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function OperationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
@@ -309,6 +401,85 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
+        {/* Progreso de la operación */}
+        {(() => {
+          const qualifyingBets = operation.bets.filter(b => b.betType === 'qualifying')
+          const freebetBets = operation.bets.filter(b => b.betType === 'freebet')
+          const qualifyingCompleted = qualifyingBets.filter(b => b.result !== null).length
+          const freebetCompleted = freebetBets.filter(b => b.result !== null).length
+
+          return (
+            <div className="card mb-6">
+              <h2 className="text-lg font-semibold mb-4">Progreso</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Progreso Qualifying */}
+                <div className={`p-4 rounded-lg border-2 ${
+                  qualifyingCompleted === qualifyingBets.length
+                    ? 'border-green-600 bg-green-900/20'
+                    : operation.status === 'qualifying' || operation.status === 'pending'
+                      ? 'border-yellow-600 bg-yellow-900/20'
+                      : 'border-gray-600 bg-gray-700'
+                }`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-semibold">Qualifying</span>
+                    <span className={`text-sm ${qualifyingCompleted === qualifyingBets.length ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {qualifyingCompleted}/{qualifyingBets.length}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-600 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${qualifyingCompleted === qualifyingBets.length ? 'bg-green-500' : 'bg-yellow-500'}`}
+                      style={{ width: `${qualifyingBets.length > 0 ? (qualifyingCompleted / qualifyingBets.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                  {qualifyingCompleted === qualifyingBets.length ? (
+                    <p className="text-xs text-green-400 mt-2">✓ Completado</p>
+                  ) : (
+                    <p className="text-xs text-yellow-400 mt-2">⏳ En progreso</p>
+                  )}
+                </div>
+
+                {/* Progreso Freebet */}
+                <div className={`p-4 rounded-lg border-2 ${
+                  freebetCompleted === freebetBets.length && freebetBets.length > 0
+                    ? 'border-green-600 bg-green-900/20'
+                    : operation.status === 'freebet'
+                      ? 'border-blue-600 bg-blue-900/20'
+                      : qualifyingCompleted < qualifyingBets.length
+                        ? 'border-gray-700 bg-gray-800 opacity-50'
+                        : 'border-gray-600 bg-gray-700'
+                }`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-semibold">Freebet</span>
+                    <span className={`text-sm ${
+                      freebetCompleted === freebetBets.length && freebetBets.length > 0 ? 'text-green-400' :
+                      operation.status === 'freebet' ? 'text-blue-400' : 'text-gray-400'
+                    }`}>
+                      {freebetCompleted}/{freebetBets.length}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-600 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${
+                        freebetCompleted === freebetBets.length && freebetBets.length > 0 ? 'bg-green-500' :
+                        operation.status === 'freebet' ? 'bg-blue-500' : 'bg-gray-500'
+                      }`}
+                      style={{ width: `${freebetBets.length > 0 ? (freebetCompleted / freebetBets.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                  {qualifyingCompleted < qualifyingBets.length ? (
+                    <p className="text-xs text-gray-500 mt-2">🔒 Completa qualifying primero</p>
+                  ) : freebetCompleted === freebetBets.length && freebetBets.length > 0 ? (
+                    <p className="text-xs text-green-400 mt-2">✓ Completado</p>
+                  ) : (
+                    <p className="text-xs text-blue-400 mt-2">⏳ Pendiente</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Stats de apuestas */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <div className="card">
@@ -324,7 +495,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
             </p>
           </div>
           <div className="card">
-            <p className="text-sm text-gray-400">Liability total</p>
+            <p className="text-sm text-gray-400">Liability actual</p>
             <p className="text-xl font-bold text-yellow-400">{formatMoney(operation.totalLiability)}</p>
           </div>
           <div className="card">
@@ -348,89 +519,53 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
           </div>
         )}
 
-        {/* Apuestas */}
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-4">Apuestas ({operation.bets.length})</h2>
-          <div className="space-y-4">
-            {operation.bets.map(bet => (
-              <div
-                key={bet.id}
-                className={`p-4 rounded-lg ${
-                  bet.result === null ? 'bg-gray-700' :
-                  bet.result === 'won' ? 'bg-green-900/30 border border-green-700' :
-                  'bg-red-900/30 border border-red-700'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="font-semibold">
-                      {bet.betType === 'qualifying' ? 'Qualifying' : 'Free Bet'}
-                      {bet.betNumber > 1 && ` #${bet.betNumber}`}
-                    </h3>
-                    {bet.eventName && (
-                      <p className="text-sm text-gray-400">{bet.eventName}</p>
-                    )}
-                  </div>
-                  {bet.result && (
-                    <span className={`badge ${bet.result === 'won' ? 'badge-completed' : 'badge-cancelled'}`}>
-                      {bet.result === 'won' ? 'Ganó en casa' : 'Perdió en casa'}
-                    </span>
-                  )}
-                </div>
+        {/* Apuestas Qualifying */}
+        {(() => {
+          const qualifyingBets = operation.bets.filter(b => b.betType === 'qualifying')
+          if (qualifyingBets.length === 0) return null
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-400">Stake</p>
-                    <p className="font-medium">{formatMoney(bet.stake)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Cuota Back</p>
-                    <p className="font-medium">{bet.oddsBack}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Cuota Lay</p>
-                    <p className="font-medium">{bet.oddsLay}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Liability</p>
-                    <p className="font-medium text-yellow-400">{formatMoney(bet.liability)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Esperado</p>
-                    <p className="font-medium text-blue-400">{formatMoney(bet.expectedProfit)}</p>
-                  </div>
-                </div>
-
-                {bet.result ? (
-                  <div className="mt-4 pt-4 border-t border-gray-600">
-                    <p className="text-sm text-gray-400">Resultado final</p>
-                    <p className={`text-xl font-bold ${(bet.actualProfit || 0) >= 0 ? 'positive' : 'negative'}`}>
-                      {formatMoney(bet.actualProfit || 0)}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-4 pt-4 border-t border-gray-600">
-                    <p className="text-sm text-gray-400 mb-2">¿Qué resultado tuvo en la casa de apuestas?</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleSetResult(bet.id, 'won')}
-                        className="btn btn-success"
-                      >
-                        Ganó en casa
-                      </button>
-                      <button
-                        onClick={() => handleSetResult(bet.id, 'lost')}
-                        className="btn btn-danger"
-                      >
-                        Perdió en casa
-                      </button>
-                    </div>
-                  </div>
-                )}
+          return (
+            <div className="card mb-6">
+              <h2 className="text-lg font-semibold mb-4">
+                Apuestas Qualifying ({qualifyingBets.filter(b => b.result !== null).length}/{qualifyingBets.length})
+              </h2>
+              <div className="space-y-4">
+                {qualifyingBets.map(bet => (
+                  <BetCard key={bet.id} bet={bet} onSetResult={handleSetResult} formatMoney={formatMoney} />
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          )
+        })()}
+
+        {/* Apuestas Freebet */}
+        {(() => {
+          const qualifyingBets = operation.bets.filter(b => b.betType === 'qualifying')
+          const freebetBets = operation.bets.filter(b => b.betType === 'freebet')
+          const allQualifyingDone = qualifyingBets.every(b => b.result !== null)
+
+          if (freebetBets.length === 0) return null
+
+          return (
+            <div className={`card mb-6 ${!allQualifyingDone ? 'opacity-50' : ''}`}>
+              <h2 className="text-lg font-semibold mb-4">
+                Apuestas Freebet ({freebetBets.filter(b => b.result !== null).length}/{freebetBets.length})
+                {!allQualifyingDone && <span className="text-sm text-gray-400 ml-2">- Completa qualifying primero</span>}
+              </h2>
+              <div className="space-y-4">
+                {freebetBets.map(bet => (
+                  <BetCard
+                    key={bet.id}
+                    bet={bet}
+                    onSetResult={handleSetResult}
+                    formatMoney={formatMoney}
+                    disabled={!allQualifyingDone}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Notas */}
         {operation.notes && (
