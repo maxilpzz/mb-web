@@ -46,16 +46,34 @@ export async function PATCH(
       }
     })
 
-    // Verificar si todas las apuestas de la operación están completadas
+    // Verificar el estado de la operación basándose en las apuestas
     const allBets = await prisma.bet.findMany({
       where: { operationId: updatedBet.operationId }
     })
 
-    const allCompleted = allBets.every(b => b.result !== null)
-    if (allCompleted) {
+    const qualifyingBets = allBets.filter(b => b.betType === 'qualifying')
+    const freebetBets = allBets.filter(b => b.betType === 'freebet')
+
+    const allQualifyingCompleted = qualifyingBets.every(b => b.result !== null)
+    const allFreebetsCompleted = freebetBets.every(b => b.result !== null)
+
+    let newStatus: string | null = null
+
+    if (allQualifyingCompleted && allFreebetsCompleted) {
+      // Todas las apuestas completadas
+      newStatus = 'completed'
+    } else if (allQualifyingCompleted && freebetBets.length > 0) {
+      // Qualifying completadas, pero hay freebets pendientes
+      newStatus = 'freebet'
+    } else if (qualifyingBets.some(b => b.result !== null)) {
+      // Al menos una qualifying tiene resultado
+      newStatus = 'qualifying'
+    }
+
+    if (newStatus) {
       await prisma.operation.update({
         where: { id: updatedBet.operationId },
-        data: { status: 'completed' }
+        data: { status: newStatus }
       })
     }
 
