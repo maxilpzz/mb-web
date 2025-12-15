@@ -74,7 +74,7 @@ npx prisma migrate dev --name nombre  # Nueva migración
 - [x] Base de datos en Supabase
 - [x] Repositorio en GitHub
 - [x] Deploy en Vercel completado
-- [ ] Configurar auto-deploy en Vercel
+- [x] Configurar auto-deploy en Vercel
 
 ## Próximas mejoras posibles
 - Autenticación (login) con Supabase Auth
