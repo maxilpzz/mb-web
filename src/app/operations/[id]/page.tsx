@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Bet {
   id: string
@@ -53,9 +54,12 @@ interface Operation {
 
 export default function OperationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [operation, setOperation] = useState<Operation | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [editForm, setEditForm] = useState({
     bizumSent: '',
     moneyReturned: '',
@@ -109,6 +113,21 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     if (res.ok) {
       setEditing(false)
       fetchOperation()
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    const res = await fetch(`/api/operations/${id}`, {
+      method: 'DELETE'
+    })
+
+    if (res.ok) {
+      router.push('/operations')
+    } else {
+      alert('Error al eliminar la operación')
+      setDeleting(false)
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -425,7 +444,45 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
         <p className="text-center text-gray-500 text-sm mt-6">
           Creado el {new Date(operation.createdAt).toLocaleString('es-ES')}
         </p>
+
+        {/* Eliminar operación */}
+        <div className="mt-8 pt-6 border-t border-gray-700">
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="btn btn-danger w-full"
+          >
+            Eliminar operación
+          </button>
+        </div>
       </div>
+
+      {/* Modal de confirmación */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="card max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-4">¿Eliminar operación?</h2>
+            <p className="text-gray-400 mb-6">
+              Se eliminará la operación de <strong>{operation.person.name}</strong> con <strong>{operation.bookmaker.name}</strong> y todas sus apuestas. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="btn btn-danger flex-1"
+              >
+                {deleting ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="btn btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
