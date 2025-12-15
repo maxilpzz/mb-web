@@ -64,6 +64,7 @@ npx prisma migrate dev --name nombre  # Nueva migración
 ```
 
 ## URLs importantes
+- **App en producción**: https://mb-web-iq9e.vercel.app
 - **Supabase Dashboard**: https://supabase.com/dashboard/project/gpgnwlyiudrfyogijnzz
 - **GitHub Repo**: https://github.com/maxilpzz/mb-web
 - **Vercel Dashboard**: https://vercel.com (buscar proyecto mb-web)
@@ -72,7 +73,7 @@ npx prisma migrate dev --name nombre  # Nueva migración
 - [x] App funcional con todas las features básicas
 - [x] Base de datos en Supabase
 - [x] Repositorio en GitHub
-- [ ] Deploy en Vercel (en proceso)
+- [x] Deploy en Vercel completado
 - [ ] Configurar auto-deploy en Vercel
 
 ## Próximas mejoras posibles
