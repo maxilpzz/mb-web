@@ -184,9 +184,14 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <p className="text-2xl font-bold text-green-400">
-              {formatMoney(exchangeBalance)}
-            </p>
+            <>
+              <p className="text-2xl font-bold text-green-400">
+                {formatMoney(exchangeBalance - (data?.totalLiability || 0))}
+              </p>
+              <p className="text-xs text-gray-500">
+                {formatMoney(exchangeBalance)} - {formatMoney(data?.totalLiability || 0)} liability
+              </p>
+            </>
           )}
         </div>
       </div>
