@@ -249,6 +249,14 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
   const [editing, setEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showAddFreebet, setShowAddFreebet] = useState(false)
+  const [addingFreebet, setAddingFreebet] = useState(false)
+  const [freebetForm, setFreebetForm] = useState({
+    stake: '',
+    oddsBack: '',
+    oddsLay: '',
+    eventName: ''
+  })
   const [editForm, setEditForm] = useState({
     bizumSent: '',
     moneyReturned: '',
@@ -285,6 +293,35 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     if (res.ok) {
       fetchOperation()
     }
+  }
+
+  const handleAddFreebet = async () => {
+    if (!freebetForm.stake || !freebetForm.oddsBack || !freebetForm.oddsLay) {
+      alert('Completa todos los campos')
+      return
+    }
+
+    setAddingFreebet(true)
+    const res = await fetch(`/api/operations/${id}/bets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        betType: 'freebet',
+        stake: parseFloat(freebetForm.stake),
+        oddsBack: parseFloat(freebetForm.oddsBack),
+        oddsLay: parseFloat(freebetForm.oddsLay),
+        eventName: freebetForm.eventName || null
+      })
+    })
+
+    if (res.ok) {
+      setShowAddFreebet(false)
+      setFreebetForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '' })
+      fetchOperation()
+    } else {
+      alert('Error al añadir freebet')
+    }
+    setAddingFreebet(false)
   }
 
   const handleSaveEdit = async () => {
@@ -643,25 +680,41 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
           const freebetBets = operation.bets.filter(b => b.betType === 'freebet')
           const allQualifyingDone = qualifyingBets.every(b => b.result !== null)
 
-          if (freebetBets.length === 0) return null
-
           return (
             <div className={`card mb-6 ${!allQualifyingDone ? 'opacity-50' : ''}`}>
-              <h2 className="text-lg font-semibold mb-4">
-                Apuestas Freebet ({freebetBets.filter(b => b.result !== null).length}/{freebetBets.length})
-                {!allQualifyingDone && <span className="text-sm text-gray-400 ml-2">- Completa qualifying primero</span>}
-              </h2>
-              <div className="space-y-4">
-                {freebetBets.map(bet => (
-                  <BetCard
-                    key={bet.id}
-                    bet={bet}
-                    onSetResult={handleSetResult}
-                    formatMoney={formatMoney}
-                    disabled={!allQualifyingDone}
-                  />
-                ))}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">
+                  Apuestas Freebet ({freebetBets.filter(b => b.result !== null).length}/{freebetBets.length})
+                  {!allQualifyingDone && <span className="text-sm text-gray-400 ml-2">- Completa qualifying primero</span>}
+                </h2>
+                {allQualifyingDone && (
+                  <button
+                    onClick={() => setShowAddFreebet(true)}
+                    className="btn btn-primary text-sm"
+                  >
+                    + Añadir Freebet
+                  </button>
+                )}
               </div>
+              {freebetBets.length > 0 ? (
+                <div className="space-y-4">
+                  {freebetBets.map(bet => (
+                    <BetCard
+                      key={bet.id}
+                      bet={bet}
+                      onSetResult={handleSetResult}
+                      formatMoney={formatMoney}
+                      disabled={!allQualifyingDone}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-4">
+                  {allQualifyingDone
+                    ? 'No hay freebets. Haz click en "Añadir Freebet" para crear una.'
+                    : 'Completa las qualifying bets primero.'}
+                </p>
+              )}
             </div>
           )
         })()}
@@ -709,6 +762,81 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleting}
+                className="btn btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal añadir freebet */}
+      {showAddFreebet && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="card max-w-md mx-4 w-full">
+            <h2 className="text-xl font-bold mb-4">Añadir Freebet</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Stake (€)</label>
+                <input
+                  type="number"
+                  value={freebetForm.stake}
+                  onChange={(e) => setFreebetForm({ ...freebetForm, stake: e.target.value })}
+                  className="input"
+                  placeholder="200"
+                  step="0.01"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Cuota Back</label>
+                  <input
+                    type="number"
+                    value={freebetForm.oddsBack}
+                    onChange={(e) => setFreebetForm({ ...freebetForm, oddsBack: e.target.value })}
+                    className="input"
+                    placeholder="3.0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="label">Cuota Lay</label>
+                  <input
+                    type="number"
+                    value={freebetForm.oddsLay}
+                    onChange={(e) => setFreebetForm({ ...freebetForm, oddsLay: e.target.value })}
+                    className="input"
+                    placeholder="3.1"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label">Evento (opcional)</label>
+                <input
+                  type="text"
+                  value={freebetForm.eventName}
+                  onChange={(e) => setFreebetForm({ ...freebetForm, eventName: e.target.value })}
+                  className="input"
+                  placeholder="Real Madrid vs Barcelona"
+                />
+              </div>
+            </div>
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={handleAddFreebet}
+                disabled={addingFreebet}
+                className="btn btn-primary flex-1"
+              >
+                {addingFreebet ? 'Añadiendo...' : 'Añadir Freebet'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddFreebet(false)
+                  setFreebetForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '' })
+                }}
+                disabled={addingFreebet}
                 className="btn btn-secondary flex-1"
               >
                 Cancelar
