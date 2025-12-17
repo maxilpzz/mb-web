@@ -35,7 +35,17 @@ export default function PersonsPage() {
     fetch('/api/persons')
       .then(res => res.json())
       .then(data => {
-        setPersons(data)
+        if (Array.isArray(data)) {
+          setPersons(data)
+        } else {
+          console.error('API returned non-array:', data)
+          setPersons([])
+        }
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Error fetching persons:', err)
+        setPersons([])
         setLoading(false)
       })
   }
