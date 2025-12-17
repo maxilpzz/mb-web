@@ -42,19 +42,16 @@ interface BetForm {
 export default function NewOperation() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const preselectedPersonId = searchParams.get('personId')
+  const personId = searchParams.get('personId')
 
-  const [persons, setPersons] = useState<Person[]>([])
+  const [person, setPerson] = useState<Person | null>(null)
   const [bookmakers, setBookmakers] = useState<Bookmaker[]>([])
   const [selectedBookmaker, setSelectedBookmaker] = useState<Bookmaker | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [showNewPerson, setShowNewPerson] = useState(false)
-  const [newPersonName, setNewPersonName] = useState('')
-  const [newPersonCommission, setNewPersonCommission] = useState('')
-  const [preselectedPerson, setPreselectedPerson] = useState<Person | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [usedBookmakerIds, setUsedBookmakerIds] = useState<string[]>([])
 
   const [form, setForm] = useState({
-    personId: '',
     bookmakerId: '',
     bizumSent: '',
     notes: '',
@@ -62,35 +59,36 @@ export default function NewOperation() {
 
   const [qualifyingBets, setQualifyingBets] = useState<BetForm[]>([])
   const [freebets, setFreebets] = useState<BetForm[]>([])
-  const [usedBookmakerIds, setUsedBookmakerIds] = useState<string[]>([])
 
   useEffect(() => {
+    // Si no hay personId, redirigir a personas
+    if (!personId) {
+      router.push('/persons')
+      return
+    }
+
+    // Cargar datos de la persona, casas de apuestas, y operaciones existentes
     Promise.all([
-      fetch('/api/persons').then(res => res.json()),
-      fetch('/api/bookmakers').then(res => res.json())
-    ]).then(([personsData, bookmakersData]) => {
-      setPersons(Array.isArray(personsData) ? personsData : [])
+      fetch(`/api/persons/${personId}`).then(res => res.ok ? res.json() : null),
+      fetch('/api/bookmakers').then(res => res.json()),
+      fetch(`/api/operations?personId=${personId}`).then(res => res.json())
+    ]).then(([personData, bookmakersData, operationsData]) => {
+      if (!personData) {
+        router.push('/persons')
+        return
+      }
+
+      setPerson(personData)
       setBookmakers(Array.isArray(bookmakersData) ? bookmakersData : [])
 
-      // If personId is in URL, pre-select that person
-      if (preselectedPersonId && Array.isArray(personsData)) {
-        const person = personsData.find((p: Person) => p.id === preselectedPersonId)
-        if (person) {
-          setPreselectedPerson(person)
-          setForm(prev => ({ ...prev, personId: preselectedPersonId }))
-          // Load used bookmakers for this person
-          fetch(`/api/operations?personId=${preselectedPersonId}`)
-            .then(res => res.json())
-            .then(operations => {
-              if (Array.isArray(operations)) {
-                const usedIds = operations.map((op: { bookmakerId: string }) => op.bookmakerId)
-                setUsedBookmakerIds(usedIds)
-              }
-            })
-        }
+      if (Array.isArray(operationsData)) {
+        const usedIds = operationsData.map((op: { bookmakerId: string }) => op.bookmakerId)
+        setUsedBookmakerIds(usedIds)
       }
+
+      setLoading(false)
     })
-  }, [preselectedPersonId])
+  }, [personId, router])
 
   const handleBookmakerChange = (bookmakerId: string) => {
     setForm({ ...form, bookmakerId })
@@ -134,27 +132,6 @@ export default function NewOperation() {
     }
   }
 
-  const handlePersonChange = async (personId: string) => {
-    setForm({ ...form, personId, bookmakerId: '' })
-    setSelectedBookmaker(null)
-    setQualifyingBets([])
-    setFreebets([])
-
-    if (personId) {
-      // Fetch operations for this person to know which bookmakers they've already used
-      const res = await fetch(`/api/operations?personId=${personId}`)
-      const operations = await res.json()
-      const usedIds = operations.map((op: { bookmakerId: string }) => op.bookmakerId)
-      setUsedBookmakerIds(usedIds)
-    } else {
-      setUsedBookmakerIds([])
-    }
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
-
   const handleBetChange = (
     index: number,
     field: keyof BetForm,
@@ -172,35 +149,9 @@ export default function NewOperation() {
     }
   }
 
-  const handleCreatePerson = async () => {
-    if (!newPersonName.trim()) return
-
-    const res = await fetch('/api/persons', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: newPersonName,
-        commission: parseFloat(newPersonCommission) || 0
-      })
-    })
-
-    if (res.ok) {
-      const newPerson = await res.json()
-      setPersons([...persons, newPerson])
-      setForm({ ...form, personId: newPerson.id, bookmakerId: '' })
-      setUsedBookmakerIds([]) // New person has no used bookmakers
-      setSelectedBookmaker(null)
-      setQualifyingBets([])
-      setFreebets([])
-      setNewPersonName('')
-      setNewPersonCommission('')
-      setShowNewPerson(false)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setSubmitting(true)
 
     // Prepare bets array
     const bets = [
@@ -233,7 +184,7 @@ export default function NewOperation() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        personId: form.personId,
+        personId,
         bookmakerId: form.bookmakerId,
         bizumSent: parseFloat(form.bizumSent) || 0,
         notes: form.notes,
@@ -243,13 +194,13 @@ export default function NewOperation() {
     })
 
     if (res.ok) {
-      router.push('/operations')
+      router.push(`/persons/${personId}`)
     } else {
       const data = await res.json()
       alert(data.error || 'Error al crear la operación')
     }
 
-    setLoading(false)
+    setSubmitting(false)
   }
 
   // Calculate liability in real time
@@ -282,166 +233,135 @@ export default function NewOperation() {
     }).format(amount)
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Cargando...</p>
+      </div>
+    )
+  }
+
+  if (!person) {
+    return null
+  }
+
+  const availableBookmakers = bookmakers.filter(b => !usedBookmakerIds.includes(b.id))
+
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold">Nueva Operación</h1>
-          <Link href="/" className="text-gray-400 hover:text-white">
-            ← Volver
+          <Link href={`/persons/${personId}`} className="text-gray-400 hover:text-white">
+            ← Volver a {person.name}
           </Link>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Persona */}
+          {/* Persona (fija, no editable) */}
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Persona</h2>
-
-            {preselectedPerson ? (
-              <div className="p-3 bg-gray-700 rounded-lg">
-                <p className="font-semibold">{preselectedPerson.name}</p>
-                {preselectedPerson.commission > 0 && (
-                  <p className="text-sm text-purple-400">Comisión acordada: {preselectedPerson.commission}€</p>
-                )}
-              </div>
-            ) : !showNewPerson ? (
-              <div className="space-y-2">
-                <select
-                  name="personId"
-                  value={form.personId}
-                  onChange={(e) => handlePersonChange(e.target.value)}
-                  className="select"
-                  required
-                >
-                  <option value="">Seleccionar persona</option>
-                  {persons.map(person => (
-                    <option key={person.id} value={person.id}>
-                      {person.name} {person.commission > 0 && `(${person.commission}€)`}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowNewPerson(true)}
-                  className="text-blue-400 text-sm hover:underline"
-                >
-                  + Añadir nueva persona
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={newPersonName}
-                  onChange={(e) => setNewPersonName(e.target.value)}
-                  placeholder="Nombre de la persona"
-                  className="input"
-                />
-                <input
-                  type="number"
-                  value={newPersonCommission}
-                  onChange={(e) => setNewPersonCommission(e.target.value)}
-                  placeholder="Comisión acordada (€)"
-                  step="0.01"
-                  className="input"
-                />
-                <div className="flex gap-2">
-                  <button type="button" onClick={handleCreatePerson} className="btn btn-primary">
-                    Crear
-                  </button>
-                  <button type="button" onClick={() => setShowNewPerson(false)} className="btn btn-secondary">
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="p-3 bg-gray-700 rounded-lg">
+              <p className="font-semibold">{person.name}</p>
+              {person.commission > 0 && (
+                <p className="text-sm text-purple-400">Comisión acordada: {formatMoney(person.commission)}</p>
+              )}
+            </div>
           </div>
 
           {/* Casa de apuestas */}
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Casa de Apuestas</h2>
-            <select
-              name="bookmakerId"
-              value={form.bookmakerId}
-              onChange={(e) => handleBookmakerChange(e.target.value)}
-              className="select"
-              required
-            >
-              <option value="">Seleccionar casa</option>
-              {bookmakers.map(b => {
-                const isUsed = usedBookmakerIds.includes(b.id)
-                return (
-                  <option key={b.id} value={b.id} disabled={isUsed}>
-                    {b.name} - Bono hasta {b.maxBonus}€ ({b.bonusType === 'always' ? 'Siempre' : 'Solo si pierdes'})
-                    {isUsed && ' ✓ Ya usada'}
-                  </option>
-                )
-              })}
-            </select>
-            {form.personId && usedBookmakerIds.length > 0 && (
-              <p className="text-sm text-gray-400 mt-2">
-                Las casas marcadas con ✓ ya fueron usadas con esta persona
-              </p>
-            )}
-
-            {/* Bookmaker info */}
-            {selectedBookmaker && (
-              <div className="mt-4 p-4 bg-gray-700 rounded-lg text-sm space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Depósito:</span>
-                  <span>{selectedBookmaker.minDeposit}€ - {selectedBookmaker.maxDeposit}€ {selectedBookmaker.numDeposits > 1 && `(${selectedBookmaker.numDeposits} depósitos)`}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Qualifying:</span>
-                  <span>{selectedBookmaker.numQualifying} apuesta(s), cuota mín {selectedBookmaker.minOddsQualifying}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Bono:</span>
-                  <span>{selectedBookmaker.bonusPercentage}% hasta {selectedBookmaker.maxBonus}€ en {selectedBookmaker.numFreebets} freebet(s)</span>
-                </div>
-                {selectedBookmaker.freebetValue && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Valor freebet:</span>
-                    <span>{selectedBookmaker.freebetValue}€ cada una</span>
-                  </div>
-                )}
-                {(selectedBookmaker.minOddsFreebet || selectedBookmaker.maxOddsFreebet) && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Cuota freebet:</span>
-                    <span>
-                      {selectedBookmaker.minOddsFreebet && `Mín ${selectedBookmaker.minOddsFreebet}`}
-                      {selectedBookmaker.minOddsFreebet && selectedBookmaker.maxOddsFreebet && ' - '}
-                      {selectedBookmaker.maxOddsFreebet && `Máx ${selectedBookmaker.maxOddsFreebet}`}
-                    </span>
-                  </div>
-                )}
-                {!selectedBookmaker.sameEvent && (
-                  <div className="text-yellow-400">⚠️ Freebets deben ser en eventos DISTINTOS</div>
-                )}
-                {selectedBookmaker.promoCode && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Código promo:</span>
-                    <span className="font-mono bg-gray-600 px-2 rounded">{selectedBookmaker.promoCode}</span>
-                  </div>
-                )}
-                {selectedBookmaker.notes && (
-                  <div className="text-yellow-300 mt-2">📝 {selectedBookmaker.notes}</div>
-                )}
+            {availableBookmakers.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-yellow-400">Esta persona ya ha usado todas las casas de apuestas disponibles</p>
+                <Link href={`/persons/${personId}`} className="btn btn-secondary mt-4 inline-block">
+                  Volver
+                </Link>
               </div>
-            )}
+            ) : (
+              <>
+                <select
+                  name="bookmakerId"
+                  value={form.bookmakerId}
+                  onChange={(e) => handleBookmakerChange(e.target.value)}
+                  className="select"
+                  required
+                >
+                  <option value="">Seleccionar casa</option>
+                  {availableBookmakers.map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} - Bono hasta {b.maxBonus}€ ({b.bonusType === 'always' ? 'Siempre' : 'Solo si pierdes'})
+                    </option>
+                  ))}
+                </select>
 
-            <div className="mt-4">
-              <label className="label">Bizum enviado (€)</label>
-              <input
-                type="number"
-                name="bizumSent"
-                value={form.bizumSent}
-                onChange={handleChange}
-                placeholder="0"
-                step="0.01"
-                className="input"
-              />
-            </div>
+                {usedBookmakerIds.length > 0 && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {usedBookmakerIds.length} casa(s) ya usada(s) con esta persona
+                  </p>
+                )}
+
+                {/* Bookmaker info */}
+                {selectedBookmaker && (
+                  <div className="mt-4 p-4 bg-gray-700 rounded-lg text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Depósito:</span>
+                      <span>{selectedBookmaker.minDeposit}€ - {selectedBookmaker.maxDeposit}€ {selectedBookmaker.numDeposits > 1 && `(${selectedBookmaker.numDeposits} depósitos)`}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Qualifying:</span>
+                      <span>{selectedBookmaker.numQualifying} apuesta(s), cuota mín {selectedBookmaker.minOddsQualifying}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Bono:</span>
+                      <span>{selectedBookmaker.bonusPercentage}% hasta {selectedBookmaker.maxBonus}€ en {selectedBookmaker.numFreebets} freebet(s)</span>
+                    </div>
+                    {selectedBookmaker.freebetValue && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Valor freebet:</span>
+                        <span>{selectedBookmaker.freebetValue}€ cada una</span>
+                      </div>
+                    )}
+                    {(selectedBookmaker.minOddsFreebet || selectedBookmaker.maxOddsFreebet) && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Cuota freebet:</span>
+                        <span>
+                          {selectedBookmaker.minOddsFreebet && `Mín ${selectedBookmaker.minOddsFreebet}`}
+                          {selectedBookmaker.minOddsFreebet && selectedBookmaker.maxOddsFreebet && ' - '}
+                          {selectedBookmaker.maxOddsFreebet && `Máx ${selectedBookmaker.maxOddsFreebet}`}
+                        </span>
+                      </div>
+                    )}
+                    {!selectedBookmaker.sameEvent && (
+                      <div className="text-yellow-400">Freebets deben ser en eventos DISTINTOS</div>
+                    )}
+                    {selectedBookmaker.promoCode && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Código promo:</span>
+                        <span className="font-mono bg-gray-600 px-2 rounded">{selectedBookmaker.promoCode}</span>
+                      </div>
+                    )}
+                    {selectedBookmaker.notes && (
+                      <div className="text-yellow-300 mt-2">{selectedBookmaker.notes}</div>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <label className="label">Bizum enviado (€)</label>
+                  <input
+                    type="number"
+                    name="bizumSent"
+                    value={form.bizumSent}
+                    onChange={(e) => setForm({ ...form, bizumSent: e.target.value })}
+                    placeholder="0"
+                    step="0.01"
+                    className="input"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Qualifying Bets */}
@@ -579,7 +499,7 @@ export default function NewOperation() {
             <textarea
               name="notes"
               value={form.notes}
-              onChange={handleChange}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
               className="input"
               placeholder="Cualquier nota adicional..."
@@ -606,13 +526,15 @@ export default function NewOperation() {
           )}
 
           {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading || !form.personId || !form.bookmakerId}
-            className="btn btn-primary w-full py-3 text-lg disabled:opacity-50"
-          >
-            {loading ? 'Creando...' : 'Crear Operación'}
-          </button>
+          {availableBookmakers.length > 0 && (
+            <button
+              type="submit"
+              disabled={submitting || !form.bookmakerId}
+              className="btn btn-primary w-full py-3 text-lg disabled:opacity-50"
+            >
+              {submitting ? 'Creando...' : 'Crear Operación'}
+            </button>
+          )}
         </form>
       </div>
     </div>
