@@ -8,11 +8,9 @@ export async function GET() {
       include: {
         operations: {
           include: {
-            bets: true,
-            bookmaker: true
+            bets: true
           }
-        },
-        transactions: true
+        }
       },
       orderBy: { name: 'asc' }
     })
@@ -31,8 +29,14 @@ export async function GET() {
         return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)
       }, 0)
 
+      // Return only the fields needed by the frontend
       return {
-        ...person,
+        id: person.id,
+        name: person.name,
+        phone: person.phone,
+        notes: person.notes,
+        commission: person.commission,
+        commissionPaid: person.commissionPaid,
         totalBizumSent,
         totalMoneyReturned,
         totalCommissionPaid,
