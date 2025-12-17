@@ -8,31 +8,41 @@ function calculateMoneyInBookmaker(bets: Array<{
   oddsBack: number
   result: string | null
 }>, deposits: Array<{ amount: number }>): number {
-  // Si no hay apuestas resueltas, el dinero en la casa es el total depositado
-  const resolvedBets = bets.filter(b => b.result !== null)
+  // Separar qualifying y freebet
+  const qualifyingBets = bets.filter(b => b.betType === 'qualifying')
+  const freebetBets = bets.filter(b => b.betType === 'freebet')
 
-  if (resolvedBets.length === 0) {
-    // Mientras no haya resultados, el dinero depositado sigue en la casa
+  // Si no hay qualifying resueltas, el dinero depositado sigue en la casa
+  const resolvedQualifying = qualifyingBets.filter(b => b.result !== null)
+
+  if (resolvedQualifying.length === 0) {
+    // Mientras no haya resultados de qualifying, el dinero depositado sigue en la casa
     return deposits.reduce((sum, d) => sum + d.amount, 0)
   }
 
   // Calcular dinero que quedó en la casa según resultados
   let moneyInBookmaker = 0
 
-  for (const bet of bets) {
+  // Qualifying bets
+  for (const bet of qualifyingBets) {
     if (bet.result === 'won') {
-      // Ganó en la casa: el dinero quedó ahí
-      if (bet.betType === 'freebet') {
-        moneyInBookmaker += bet.stake * (bet.oddsBack - 1)
-      } else {
-        moneyInBookmaker += bet.stake * bet.oddsBack
-      }
-    }
-    // Si perdió (result === 'lost'), el dinero está en el exchange, no suma
-    // Si está pendiente (result === null), el stake sigue en la casa
-    else if (bet.result === null) {
+      // Ganó en la casa: stake * odds
+      moneyInBookmaker += bet.stake * bet.oddsBack
+    } else if (bet.result === null) {
+      // Pendiente: el stake sigue en la casa
       moneyInBookmaker += bet.stake
     }
+    // Si perdió (result === 'lost'), el dinero está en el exchange, no suma
+  }
+
+  // Freebet bets - SOLO cuentan si ya se resolvieron y ganaron
+  // El stake de freebet pendiente NO es dinero real (es un bono)
+  for (const bet of freebetBets) {
+    if (bet.result === 'won') {
+      // Ganó en la casa: solo ganancias (stake * (odds - 1)), no el stake
+      moneyInBookmaker += bet.stake * (bet.oddsBack - 1)
+    }
+    // Si está pendiente o perdió, no suma nada (freebet no es dinero real)
   }
 
   return moneyInBookmaker
