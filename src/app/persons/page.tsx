@@ -203,7 +203,7 @@ export default function PersonsPage() {
             </div>
           ) : (
             persons.map(person => (
-              <div key={person.id} className="card">
+              <Link key={person.id} href={`/persons/${person.id}`} className="card block hover:bg-gray-700 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-lg font-semibold">{person.name}</h3>
@@ -224,7 +224,11 @@ export default function PersonsPage() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setDeletingId(person.id)}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setDeletingId(person.id)
+                      }}
                       className="text-gray-500 hover:text-red-500 transition-colors p-1"
                       title="Eliminar persona"
                     >
@@ -254,7 +258,7 @@ export default function PersonsPage() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

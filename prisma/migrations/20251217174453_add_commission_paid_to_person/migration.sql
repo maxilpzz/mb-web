@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Person" ADD COLUMN     "commissionPaid" DOUBLE PRECISION NOT NULL DEFAULT 0;
