@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateQualifyingProfit, calculateFreeBetProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
 
+const COMMISSION = 0.05 // 5% comisión del exchange
+
 // PATCH: Actualizar resultado de apuesta
 export async function PATCH(
   request: Request,
@@ -25,6 +27,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Apuesta no encontrada' }, { status: 404 })
     }
 
+    // Si la apuesta ya tenía resultado, no actualizar el saldo del exchange otra vez
+    const alreadyResolved = bet.result !== null
+
     // Calcular el beneficio real
     const layStake = bet.betType === 'qualifying'
       ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
@@ -45,6 +50,30 @@ export async function PATCH(
         operation: true
       }
     })
+
+    // Actualizar saldo del exchange automáticamente (solo si no estaba ya resuelto)
+    if (!alreadyResolved) {
+      let exchangeChange = 0
+
+      if (result === 'won') {
+        // Ganó en la casa: perdiste la liability en el exchange
+        exchangeChange = -bet.liability
+      } else {
+        // Perdió en la casa: ganaste en el exchange
+        exchangeChange = layStake * (1 - COMMISSION)
+      }
+
+      // Obtener settings actual y actualizar
+      const settings = await prisma.settings.findUnique({ where: { id: 'global' } })
+      if (settings) {
+        await prisma.settings.update({
+          where: { id: 'global' },
+          data: {
+            exchangeBalance: settings.exchangeBalance + exchangeChange
+          }
+        })
+      }
+    }
 
     // Verificar el estado de la operación basándose en las apuestas
     const allBets = await prisma.bet.findMany({
