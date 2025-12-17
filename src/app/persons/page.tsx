@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Person {
   id: string
@@ -18,6 +19,7 @@ interface Person {
 }
 
 export default function PersonsPage() {
+  const router = useRouter()
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
@@ -203,7 +205,11 @@ export default function PersonsPage() {
             </div>
           ) : (
             persons.map(person => (
-              <Link key={person.id} href={`/persons/${person.id}`} className="card block hover:bg-gray-600 transition-colors cursor-pointer">
+              <div
+                key={person.id}
+                onClick={() => router.push(`/persons/${person.id}`)}
+                className="card block hover:bg-gray-600 transition-colors cursor-pointer"
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-lg font-semibold">{person.name}</h3>
@@ -258,7 +264,7 @@ export default function PersonsPage() {
                     </p>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))
           )}
         </div>
