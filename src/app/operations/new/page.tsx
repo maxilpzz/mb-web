@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -39,7 +39,7 @@ interface BetForm {
   eventName: string
 }
 
-export default function NewOperation() {
+function NewOperationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const personId = searchParams.get('personId')
@@ -538,5 +538,17 @@ export default function NewOperation() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function NewOperationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Cargando...</p>
+      </div>
+    }>
+      <NewOperationContent />
+    </Suspense>
   )
 }
