@@ -101,10 +101,11 @@ export interface BetForOwesCalculation {
 }
 
 export interface OwesBreakdown {
-  moneyInBookmaker: number      // Dinero físico en la casa
+  moneyInBookmaker: number      // Dinero físico en la casa (lo que te debe)
   liabilityLost: number         // Liability perdida (apuestas que ganaron en casa)
   exchangeWinnings: number      // Ganancias en exchange (apuestas que perdieron en casa)
-  totalOwes: number             // Lo que te debe = moneyInBookmaker - liabilityLost
+  exchangeBalance: number       // Balance en exchange = ganancias - pérdidas
+  totalOwes: number             // Lo que te debe = moneyInBookmaker (el dinero físico)
   pendingBets: number           // Apuestas sin resultado
   breakdown: {
     betType: string
@@ -113,7 +114,6 @@ export interface OwesBreakdown {
     moneyInBookmaker: number
     liabilityLost: number
     exchangeWinnings: number
-    owes: number
   }[]
 }
 
@@ -145,7 +145,6 @@ export function calculateOwes(bets: BetForOwesCalculation[]): OwesBreakdown {
       }
 
       const betLiabilityLost = bet.liability
-      const betOwes = betMoneyInBookmaker - betLiabilityLost
 
       moneyInBookmaker += betMoneyInBookmaker
       liabilityLost += betLiabilityLost
@@ -155,8 +154,7 @@ export function calculateOwes(bets: BetForOwesCalculation[]): OwesBreakdown {
         result: 'won',
         moneyInBookmaker: betMoneyInBookmaker,
         liabilityLost: betLiabilityLost,
-        exchangeWinnings: 0,
-        owes: betOwes
+        exchangeWinnings: 0
       })
     } else {
       // Perdió en la casa: dinero en exchange, nada en la casa
@@ -169,8 +167,7 @@ export function calculateOwes(bets: BetForOwesCalculation[]): OwesBreakdown {
         result: 'lost',
         moneyInBookmaker: 0,
         liabilityLost: 0,
-        exchangeWinnings: betExchangeWinnings,
-        owes: 0
+        exchangeWinnings: betExchangeWinnings
       })
     }
   })
@@ -179,7 +176,8 @@ export function calculateOwes(bets: BetForOwesCalculation[]): OwesBreakdown {
     moneyInBookmaker,
     liabilityLost,
     exchangeWinnings,
-    totalOwes: moneyInBookmaker - liabilityLost,
+    exchangeBalance: exchangeWinnings - liabilityLost, // Balance neto en exchange
+    totalOwes: moneyInBookmaker, // Te debe = dinero físico en la casa
     pendingBets,
     breakdown
   }

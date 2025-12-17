@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx @anthropic/mcp-server-playwright --version)",
+      "Bash(npx playwright:*)",
+      "Bash(npm search:*)",
+      "Bash(npm view:*)",
+      "Bash(npx:*)",
+      "Bash(npm whoami:*)",
+      "Bash(npm run build:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

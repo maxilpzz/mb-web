@@ -74,13 +74,13 @@ function OwesDisplay({
         <div className="flex items-center gap-2">
           <div>
             <p className="text-sm text-gray-400">Te debe</p>
-            <p className={`text-xl font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : owesData.totalOwes < 0 ? 'text-green-400' : ''}`}>
+            <p className={`text-xl font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : ''}`}>
               {formatMoney(owesData.totalOwes)}
             </p>
           </div>
           {hasResults && (
             <span className="text-gray-500 text-sm">
-              {expanded ? '▼' : '▶'} ver cálculo
+              {expanded ? '▼' : '▶'} ver desglose
             </span>
           )}
         </div>
@@ -93,24 +93,7 @@ function OwesDisplay({
 
       {expanded && (
         <div className="bg-gray-800 rounded-lg p-4 text-sm space-y-3 border border-gray-700">
-          <div className="grid grid-cols-2 gap-4 pb-3 border-b border-gray-700">
-            <div>
-              <p className="text-gray-400">Dinero en la casa</p>
-              <p className="font-semibold text-red-400">+{formatMoney(owesData.moneyInBookmaker)}</p>
-            </div>
-            <div>
-              <p className="text-gray-400">Liability perdida</p>
-              <p className="font-semibold text-yellow-400">-{formatMoney(owesData.liabilityLost)}</p>
-            </div>
-          </div>
-
-          {owesData.exchangeWinnings > 0 && (
-            <div className="pb-3 border-b border-gray-700">
-              <p className="text-gray-400">Ganado en exchange (tuyo)</p>
-              <p className="font-semibold text-green-400">+{formatMoney(owesData.exchangeWinnings)}</p>
-            </div>
-          )}
-
+          {/* Desglose por apuesta */}
           <div className="space-y-2">
             <p className="text-gray-400 font-medium">Desglose por apuesta:</p>
             {owesData.breakdown.map((item, idx) => (
@@ -122,27 +105,41 @@ function OwesDisplay({
                       ({item.result === 'won' ? 'en casa' : 'en exchange'})
                     </span>
                   </span>
-                  <span className={`font-semibold ${item.owes > 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                    {item.owes > 0 ? `Te debe ${formatMoney(item.owes)}` : 'No te debe'}
+                  <span className={`font-semibold ${item.moneyInBookmaker > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    {item.moneyInBookmaker > 0
+                      ? `Te debe ${formatMoney(item.moneyInBookmaker)}`
+                      : `+${formatMoney(item.exchangeWinnings)} en exchange`}
                   </span>
                 </div>
-                {item.result === 'won' && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatMoney(item.moneyInBookmaker)} en casa − {formatMoney(item.liabilityLost)} liability
-                  </p>
-                )}
-                {item.result === 'lost' && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Ganaste {formatMoney(item.exchangeWinnings)} en tu exchange
-                  </p>
-                )}
               </div>
             ))}
           </div>
 
+          {/* Resumen exchange */}
+          <div className="pt-3 border-t border-gray-700 space-y-2">
+            <p className="text-gray-400 font-medium">Tu balance en exchange (esta operación):</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Liability perdida</p>
+                <p className="font-semibold text-yellow-400">-{formatMoney(owesData.liabilityLost)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Ganado en exchange</p>
+                <p className="font-semibold text-green-400">+{formatMoney(owesData.exchangeWinnings)}</p>
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-gray-400">Balance exchange:</span>
+              <span className={`font-bold ${owesData.exchangeBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {owesData.exchangeBalance >= 0 ? '+' : ''}{formatMoney(owesData.exchangeBalance)}
+              </span>
+            </div>
+          </div>
+
+          {/* Total te debe */}
           <div className="pt-3 border-t border-gray-700 flex justify-between items-center">
-            <span className="text-gray-400">Total te debe:</span>
-            <span className={`text-lg font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : 'text-green-400'}`}>
+            <span className="text-gray-400">Total te debe (dinero en casa):</span>
+            <span className={`text-lg font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : 'text-gray-400'}`}>
               {formatMoney(owesData.totalOwes)}
             </span>
           </div>

@@ -33,8 +33,13 @@ interface DashboardData {
 export default function Home() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [exchangeBalance, setExchangeBalance] = useState<number>(0)
+  const [editingExchange, setEditingExchange] = useState(false)
+  const [exchangeInput, setExchangeInput] = useState('')
+  const [savingExchange, setSavingExchange] = useState(false)
 
   useEffect(() => {
+    // Fetch dashboard data
     fetch('/api/dashboard')
       .then(res => res.json())
       .then(data => {
@@ -45,7 +50,35 @@ export default function Home() {
         console.error(err)
         setLoading(false)
       })
+
+    // Fetch exchange balance
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(settings => {
+        setExchangeBalance(settings.exchangeBalance || 0)
+        setExchangeInput(settings.exchangeBalance?.toString() || '0')
+      })
+      .catch(err => console.error(err))
   }, [])
+
+  const handleSaveExchangeBalance = async () => {
+    setSavingExchange(true)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exchangeBalance: parseFloat(exchangeInput) || 0 })
+      })
+      if (res.ok) {
+        const settings = await res.json()
+        setExchangeBalance(settings.exchangeBalance)
+        setEditingExchange(false)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+    setSavingExchange(false)
+  }
 
   const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -81,7 +114,7 @@ export default function Home() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <div className="card">
           <p className="text-sm text-gray-400">Beneficio Total</p>
           <p className={`text-2xl font-bold ${(data?.totalProfit || 0) >= 0 ? 'positive' : 'negative'}`}>
@@ -107,6 +140,54 @@ export default function Home() {
           <p className="text-2xl font-bold text-yellow-400">
             {formatMoney(data?.totalLiability || 0)}
           </p>
+        </div>
+        {/* Saldo Exchange (editable) */}
+        <div className="card bg-green-900/20 border border-green-800">
+          <div className="flex justify-between items-start">
+            <p className="text-sm text-gray-400">Saldo Exchange</p>
+            {!editingExchange && (
+              <button
+                onClick={() => setEditingExchange(true)}
+                className="text-xs text-green-400 hover:underline"
+              >
+                Editar
+              </button>
+            )}
+          </div>
+          {editingExchange ? (
+            <div className="mt-2 space-y-2">
+              <input
+                type="number"
+                value={exchangeInput}
+                onChange={(e) => setExchangeInput(e.target.value)}
+                className="input text-lg w-full"
+                step="0.01"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveExchangeBalance}
+                  disabled={savingExchange}
+                  className="btn btn-success text-xs flex-1"
+                >
+                  {savingExchange ? '...' : 'Guardar'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingExchange(false)
+                    setExchangeInput(exchangeBalance.toString())
+                  }}
+                  className="btn btn-secondary text-xs flex-1"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-2xl font-bold text-green-400">
+              {formatMoney(exchangeBalance)}
+            </p>
+          )}
         </div>
       </div>
 

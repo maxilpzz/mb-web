@@ -148,3 +148,10 @@ model Transaction {
 
   createdAt   DateTime @default(now())
 }
+
+// Configuración global (saldo del exchange, etc.)
+model Settings {
+  id              String   @id @default("global")
+  exchangeBalance Float    @default(0) // Saldo actual en el exchange (Betfair)
+  updatedAt       DateTime @updatedAt
+}
