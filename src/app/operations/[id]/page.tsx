@@ -56,14 +56,20 @@ interface Operation {
 // Componente para mostrar el "Te debe" con desglose expandible
 function OwesDisplay({
   owesData,
-  formatMoney
+  moneyReturned,
+  formatMoney,
+  onMarkReturned
 }: {
   owesData: OwesBreakdown
+  moneyReturned: number
   formatMoney: (amount: number) => string
+  onMarkReturned: (amount: number) => void
 }) {
   const [expanded, setExpanded] = useState(false)
 
   const hasResults = owesData.breakdown.length > 0
+  const remainingDebt = Math.max(0, owesData.totalOwes - moneyReturned)
+  const hasRemainingDebt = remainingDebt > 0.01
 
   return (
     <div className="space-y-2">
@@ -74,9 +80,14 @@ function OwesDisplay({
         <div className="flex items-center gap-2">
           <div>
             <p className="text-sm text-gray-400">Te debe</p>
-            <p className={`text-xl font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : ''}`}>
-              {formatMoney(owesData.totalOwes)}
+            <p className={`text-xl font-bold ${remainingDebt > 0 ? 'text-red-400' : 'text-green-400'}`}>
+              {formatMoney(remainingDebt)}
             </p>
+            {moneyReturned > 0 && (
+              <p className="text-xs text-green-500">
+                ✓ Devuelto: {formatMoney(moneyReturned)}
+              </p>
+            )}
           </div>
           {hasResults && (
             <span className="text-gray-500 text-sm">
@@ -90,6 +101,19 @@ function OwesDisplay({
           </p>
         )}
       </div>
+
+      {/* Botón para marcar como devuelto */}
+      {hasRemainingDebt && owesData.pendingBets === 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onMarkReturned(owesData.totalOwes)
+          }}
+          className="btn btn-success text-sm w-full mt-2"
+        >
+          ✓ Marcar {formatMoney(remainingDebt)} como devuelto
+        </button>
+      )}
 
       {expanded && (
         <div className="bg-gray-800 rounded-lg p-4 text-sm space-y-3 border border-gray-700">
@@ -357,6 +381,22 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
+  const handleMarkReturned = async (amount: number) => {
+    const res = await fetch(`/api/operations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        moneyReturned: amount
+      })
+    })
+
+    if (res.ok) {
+      fetchOperation()
+    } else {
+      alert('Error al actualizar')
+    }
+  }
+
   const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -478,7 +518,12 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                 <p className="text-sm text-gray-400">Comisión</p>
                 <p className="text-xl font-bold">{formatMoney(operation.commissionPaid)}</p>
               </div>
-              <OwesDisplay owesData={owesData} formatMoney={formatMoney} />
+              <OwesDisplay
+                owesData={owesData}
+                moneyReturned={operation.moneyReturned}
+                formatMoney={formatMoney}
+                onMarkReturned={handleMarkReturned}
+              />
             </div>
           ) : (
             <div className="space-y-4">

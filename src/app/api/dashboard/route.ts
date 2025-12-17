@@ -78,7 +78,8 @@ export async function GET() {
     const totalMoneyInBookmaker = operations.reduce((sum, op) => {
       return sum + calculateMoneyInBookmaker(op.bets, op.deposits)
     }, 0)
-    const pendingToCollect = totalMoneyInBookmaker - totalMoneyReturned
+    // Deuda real pendiente (descontando lo ya devuelto)
+    const pendingToCollect = Math.max(0, totalMoneyInBookmaker - totalMoneyReturned)
 
     const totalLiability = operations
       .filter(op => op.status !== 'completed' && op.status !== 'cancelled')
@@ -109,10 +110,15 @@ export async function GET() {
       // Restar el dinero que ya te devolvió
       const returned = person.operations.reduce((sum, op) => sum + op.moneyReturned, 0)
 
+      // Deuda pendiente = dinero en casa - lo que ya devolvió
+      const remainingDebt = moneyInBookmaker - returned
+
       return {
         id: person.id,
         name: person.name,
-        balance: moneyInBookmaker - returned // Positivo = te debe (dinero en casa - devuelto)
+        balance: remainingDebt, // Positivo = te debe (dinero en casa - devuelto)
+        moneyInBookmaker, // Total en la casa
+        returned // Lo que ya devolvió
       }
     }).filter(p => Math.abs(p.balance) > 0.01)
 
