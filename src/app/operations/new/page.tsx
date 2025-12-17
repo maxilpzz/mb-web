@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface Person {
@@ -41,6 +41,9 @@ interface BetForm {
 
 export default function NewOperation() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const preselectedPersonId = searchParams.get('personId')
+
   const [persons, setPersons] = useState<Person[]>([])
   const [bookmakers, setBookmakers] = useState<Bookmaker[]>([])
   const [selectedBookmaker, setSelectedBookmaker] = useState<Bookmaker | null>(null)
@@ -48,6 +51,7 @@ export default function NewOperation() {
   const [showNewPerson, setShowNewPerson] = useState(false)
   const [newPersonName, setNewPersonName] = useState('')
   const [newPersonCommission, setNewPersonCommission] = useState('')
+  const [preselectedPerson, setPreselectedPerson] = useState<Person | null>(null)
 
   const [form, setForm] = useState({
     personId: '',
@@ -65,10 +69,28 @@ export default function NewOperation() {
       fetch('/api/persons').then(res => res.json()),
       fetch('/api/bookmakers').then(res => res.json())
     ]).then(([personsData, bookmakersData]) => {
-      setPersons(personsData)
-      setBookmakers(bookmakersData)
+      setPersons(Array.isArray(personsData) ? personsData : [])
+      setBookmakers(Array.isArray(bookmakersData) ? bookmakersData : [])
+
+      // If personId is in URL, pre-select that person
+      if (preselectedPersonId && Array.isArray(personsData)) {
+        const person = personsData.find((p: Person) => p.id === preselectedPersonId)
+        if (person) {
+          setPreselectedPerson(person)
+          setForm(prev => ({ ...prev, personId: preselectedPersonId }))
+          // Load used bookmakers for this person
+          fetch(`/api/operations?personId=${preselectedPersonId}`)
+            .then(res => res.json())
+            .then(operations => {
+              if (Array.isArray(operations)) {
+                const usedIds = operations.map((op: { bookmakerId: string }) => op.bookmakerId)
+                setUsedBookmakerIds(usedIds)
+              }
+            })
+        }
+      }
     })
-  }, [])
+  }, [preselectedPersonId])
 
   const handleBookmakerChange = (bookmakerId: string) => {
     setForm({ ...form, bookmakerId })
@@ -275,7 +297,14 @@ export default function NewOperation() {
           <div className="card">
             <h2 className="text-lg font-semibold mb-4">Persona</h2>
 
-            {!showNewPerson ? (
+            {preselectedPerson ? (
+              <div className="p-3 bg-gray-700 rounded-lg">
+                <p className="font-semibold">{preselectedPerson.name}</p>
+                {preselectedPerson.commission > 0 && (
+                  <p className="text-sm text-purple-400">Comisión acordada: {preselectedPerson.commission}€</p>
+                )}
+              </div>
+            ) : !showNewPerson ? (
               <div className="space-y-2">
                 <select
                   name="personId"
@@ -337,9 +366,8 @@ export default function NewOperation() {
               onChange={(e) => handleBookmakerChange(e.target.value)}
               className="select"
               required
-              disabled={!form.personId}
             >
-              <option value="">{form.personId ? 'Seleccionar casa' : 'Primero selecciona una persona'}</option>
+              <option value="">Seleccionar casa</option>
               {bookmakers.map(b => {
                 const isUsed = usedBookmakerIds.includes(b.id)
                 return (

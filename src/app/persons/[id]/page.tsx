@@ -351,7 +351,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
 
           {/* Botón para nueva operación */}
           <Link
-            href="/operations/new"
+            href={`/operations/new?personId=${person.id}`}
             className="btn btn-primary w-full mt-4"
           >
             + Nueva operación con {person.name}
