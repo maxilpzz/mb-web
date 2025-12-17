@@ -397,6 +397,22 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
+  const handlePayCommission = async (amount: number) => {
+    const res = await fetch(`/api/operations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commissionPaid: amount
+      })
+    })
+
+    if (res.ok) {
+      fetchOperation()
+    } else {
+      alert('Error al pagar comisión')
+    }
+  }
+
   const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -517,6 +533,17 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
               <div>
                 <p className="text-sm text-gray-400">Comisión</p>
                 <p className="text-xl font-bold">{formatMoney(operation.commissionPaid)}</p>
+                {operation.person.commission > 0 && operation.commissionPaid < operation.person.commission && (
+                  <button
+                    onClick={() => handlePayCommission(operation.person.commission)}
+                    className="btn btn-primary text-xs mt-2"
+                  >
+                    Pagar {formatMoney(operation.person.commission)}
+                  </button>
+                )}
+                {operation.commissionPaid > 0 && operation.commissionPaid >= operation.person.commission && (
+                  <p className="text-xs text-green-500 mt-1">✓ Pagada</p>
+                )}
               </div>
               <OwesDisplay
                 owesData={owesData}
