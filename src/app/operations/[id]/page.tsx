@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { calculateOwes, OwesBreakdown } from '@/lib/calculations'
 
 interface Bet {
   id: string
@@ -50,6 +51,105 @@ interface Operation {
   pendingBets: number
   totalDeposited: number
   createdAt: string
+}
+
+// Componente para mostrar el "Te debe" con desglose expandible
+function OwesDisplay({
+  owesData,
+  formatMoney
+}: {
+  owesData: OwesBreakdown
+  formatMoney: (amount: number) => string
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  const hasResults = owesData.breakdown.length > 0
+
+  return (
+    <div className="space-y-2">
+      <div
+        onClick={() => hasResults && setExpanded(!expanded)}
+        className={`${hasResults ? 'cursor-pointer hover:bg-gray-700/50 rounded-lg p-2 -m-2 transition-colors' : ''}`}
+      >
+        <div className="flex items-center gap-2">
+          <div>
+            <p className="text-sm text-gray-400">Te debe</p>
+            <p className={`text-xl font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : owesData.totalOwes < 0 ? 'text-green-400' : ''}`}>
+              {formatMoney(owesData.totalOwes)}
+            </p>
+          </div>
+          {hasResults && (
+            <span className="text-gray-500 text-sm">
+              {expanded ? '▼' : '▶'} ver cálculo
+            </span>
+          )}
+        </div>
+        {owesData.pendingBets > 0 && (
+          <p className="text-xs text-yellow-500 mt-1">
+            ⏳ {owesData.pendingBets} apuesta{owesData.pendingBets > 1 ? 's' : ''} pendiente{owesData.pendingBets > 1 ? 's' : ''}
+          </p>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="bg-gray-800 rounded-lg p-4 text-sm space-y-3 border border-gray-700">
+          <div className="grid grid-cols-2 gap-4 pb-3 border-b border-gray-700">
+            <div>
+              <p className="text-gray-400">Dinero en la casa</p>
+              <p className="font-semibold text-red-400">+{formatMoney(owesData.moneyInBookmaker)}</p>
+            </div>
+            <div>
+              <p className="text-gray-400">Liability perdida</p>
+              <p className="font-semibold text-yellow-400">-{formatMoney(owesData.liabilityLost)}</p>
+            </div>
+          </div>
+
+          {owesData.exchangeWinnings > 0 && (
+            <div className="pb-3 border-b border-gray-700">
+              <p className="text-gray-400">Ganado en exchange (tuyo)</p>
+              <p className="font-semibold text-green-400">+{formatMoney(owesData.exchangeWinnings)}</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-gray-400 font-medium">Desglose por apuesta:</p>
+            {owesData.breakdown.map((item, idx) => (
+              <div key={idx} className={`p-2 rounded ${item.result === 'won' ? 'bg-red-900/20' : 'bg-green-900/20'}`}>
+                <div className="flex justify-between items-center">
+                  <span className="capitalize">
+                    {item.betType === 'qualifying' ? 'Qualifying' : 'Freebet'}
+                    <span className={`ml-2 text-xs ${item.result === 'won' ? 'text-red-400' : 'text-green-400'}`}>
+                      ({item.result === 'won' ? 'en casa' : 'en exchange'})
+                    </span>
+                  </span>
+                  <span className={`font-semibold ${item.owes > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                    {item.owes > 0 ? `Te debe ${formatMoney(item.owes)}` : 'No te debe'}
+                  </span>
+                </div>
+                {item.result === 'won' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formatMoney(item.moneyInBookmaker)} en casa − {formatMoney(item.liabilityLost)} liability
+                  </p>
+                )}
+                {item.result === 'lost' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ganaste {formatMoney(item.exchangeWinnings)} en tu exchange
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-3 border-t border-gray-700 flex justify-between items-center">
+            <span className="text-gray-400">Total te debe:</span>
+            <span className={`text-lg font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : 'text-green-400'}`}>
+              {formatMoney(owesData.totalOwes)}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // Componente para mostrar una apuesta individual
@@ -262,7 +362,15 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     )
   }
 
-  const balance = operation.bizumSent - operation.moneyReturned - operation.commissionPaid
+  // Calcular lo que te debe basándose en los resultados de las apuestas
+  const owesData = calculateOwes(operation.bets.map(bet => ({
+    betType: bet.betType,
+    stake: bet.stake,
+    oddsBack: bet.oddsBack,
+    oddsLay: bet.oddsLay,
+    liability: bet.liability,
+    result: bet.result
+  })))
 
   return (
     <div className="min-h-screen p-8">
@@ -336,13 +444,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                 <p className="text-sm text-gray-400">Comisión</p>
                 <p className="text-xl font-bold">{formatMoney(operation.commissionPaid)}</p>
               </div>
-              <div>
-                <p className="text-sm text-gray-400">Saldo</p>
-                <p className={`text-xl font-bold ${balance > 0 ? 'positive' : balance < 0 ? 'negative' : ''}`}>
-                  {balance > 0 ? 'Te debe ' : balance < 0 ? 'Le debes ' : ''}
-                  {formatMoney(Math.abs(balance))}
-                </p>
-              </div>
+              <OwesDisplay owesData={owesData} formatMoney={formatMoney} />
             </div>
           ) : (
             <div className="space-y-4">

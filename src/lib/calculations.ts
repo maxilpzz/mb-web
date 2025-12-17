@@ -89,3 +89,98 @@ export function formatMoney(amount: number): string {
     currency: 'EUR'
   }).format(amount)
 }
+
+// Calcular lo que te debe la persona basándose en los resultados de las apuestas
+export interface BetForOwesCalculation {
+  betType: 'qualifying' | 'freebet' | string
+  stake: number
+  oddsBack: number
+  oddsLay: number
+  liability: number
+  result: 'won' | 'lost' | null | string
+}
+
+export interface OwesBreakdown {
+  moneyInBookmaker: number      // Dinero físico en la casa
+  liabilityLost: number         // Liability perdida (apuestas que ganaron en casa)
+  exchangeWinnings: number      // Ganancias en exchange (apuestas que perdieron en casa)
+  totalOwes: number             // Lo que te debe = moneyInBookmaker - liabilityLost
+  pendingBets: number           // Apuestas sin resultado
+  breakdown: {
+    betType: string
+    betNumber?: number
+    result: string
+    moneyInBookmaker: number
+    liabilityLost: number
+    exchangeWinnings: number
+    owes: number
+  }[]
+}
+
+export function calculateOwes(bets: BetForOwesCalculation[]): OwesBreakdown {
+  let moneyInBookmaker = 0
+  let liabilityLost = 0
+  let exchangeWinnings = 0
+  let pendingBets = 0
+  const breakdown: OwesBreakdown['breakdown'] = []
+
+  bets.forEach((bet, index) => {
+    if (bet.result === null) {
+      pendingBets++
+      return
+    }
+
+    const layStake = bet.liability / (bet.oddsLay - 1)
+
+    if (bet.result === 'won') {
+      // Ganó en la casa: dinero quedó allí, perdimos liability en exchange
+      let betMoneyInBookmaker: number
+
+      if (bet.betType === 'freebet') {
+        // En freebet, solo ganas (oddsBack - 1) * stake, no te devuelven el stake
+        betMoneyInBookmaker = bet.stake * (bet.oddsBack - 1)
+      } else {
+        // En qualifying, ganas stake * oddsBack
+        betMoneyInBookmaker = bet.stake * bet.oddsBack
+      }
+
+      const betLiabilityLost = bet.liability
+      const betOwes = betMoneyInBookmaker - betLiabilityLost
+
+      moneyInBookmaker += betMoneyInBookmaker
+      liabilityLost += betLiabilityLost
+
+      breakdown.push({
+        betType: bet.betType,
+        result: 'won',
+        moneyInBookmaker: betMoneyInBookmaker,
+        liabilityLost: betLiabilityLost,
+        exchangeWinnings: 0,
+        owes: betOwes
+      })
+    } else {
+      // Perdió en la casa: dinero en exchange, nada en la casa
+      const betExchangeWinnings = layStake * (1 - COMMISSION)
+
+      exchangeWinnings += betExchangeWinnings
+
+      breakdown.push({
+        betType: bet.betType,
+        result: 'lost',
+        moneyInBookmaker: 0,
+        liabilityLost: 0,
+        exchangeWinnings: betExchangeWinnings,
+        owes: 0
+      })
+    }
+  })
+
+  return {
+    moneyInBookmaker,
+    liabilityLost,
+    exchangeWinnings,
+    totalOwes: moneyInBookmaker - liabilityLost,
+    pendingBets,
+    breakdown
+  }
+}
