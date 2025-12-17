@@ -203,7 +203,7 @@ export default function PersonsPage() {
             </div>
           ) : (
             persons.map(person => (
-              <Link key={person.id} href={`/persons/${person.id}`} className="card block hover:bg-gray-700 transition-colors">
+              <Link key={person.id} href={`/persons/${person.id}`} className="card block hover:bg-gray-600 transition-colors cursor-pointer">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-lg font-semibold">{person.name}</h3>
