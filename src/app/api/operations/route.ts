@@ -57,6 +57,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 
+    // Verificar si ya existe una operación con esta persona y casa de apuestas
+    const existingOperation = await prisma.operation.findFirst({
+      where: {
+        personId,
+        bookmakerId
+      },
+      include: {
+        person: true,
+        bookmaker: true
+      }
+    })
+
+    if (existingOperation) {
+      return NextResponse.json({
+        error: `${existingOperation.person.name} ya tiene una operación con ${existingOperation.bookmaker.name}`
+      }, { status: 400 })
+    }
+
     // Verificar que la casa de apuestas existe
     const bookmaker = await prisma.bookmaker.findUnique({
       where: { id: bookmakerId }

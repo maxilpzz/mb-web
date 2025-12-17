@@ -58,6 +58,7 @@ export default function NewOperation() {
 
   const [qualifyingBets, setQualifyingBets] = useState<BetForm[]>([])
   const [freebets, setFreebets] = useState<BetForm[]>([])
+  const [usedBookmakerIds, setUsedBookmakerIds] = useState<string[]>([])
 
   useEffect(() => {
     Promise.all([
@@ -111,6 +112,23 @@ export default function NewOperation() {
     }
   }
 
+  const handlePersonChange = async (personId: string) => {
+    setForm({ ...form, personId, bookmakerId: '' })
+    setSelectedBookmaker(null)
+    setQualifyingBets([])
+    setFreebets([])
+
+    if (personId) {
+      // Fetch operations for this person to know which bookmakers they've already used
+      const res = await fetch(`/api/operations?personId=${personId}`)
+      const operations = await res.json()
+      const usedIds = operations.map((op: { bookmakerId: string }) => op.bookmakerId)
+      setUsedBookmakerIds(usedIds)
+    } else {
+      setUsedBookmakerIds([])
+    }
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
@@ -147,7 +165,11 @@ export default function NewOperation() {
     if (res.ok) {
       const newPerson = await res.json()
       setPersons([...persons, newPerson])
-      setForm({ ...form, personId: newPerson.id })
+      setForm({ ...form, personId: newPerson.id, bookmakerId: '' })
+      setUsedBookmakerIds([]) // New person has no used bookmakers
+      setSelectedBookmaker(null)
+      setQualifyingBets([])
+      setFreebets([])
       setNewPersonName('')
       setNewPersonCommission('')
       setShowNewPerson(false)
@@ -201,7 +223,8 @@ export default function NewOperation() {
     if (res.ok) {
       router.push('/operations')
     } else {
-      alert('Error al crear la operación')
+      const data = await res.json()
+      alert(data.error || 'Error al crear la operación')
     }
 
     setLoading(false)
@@ -257,7 +280,7 @@ export default function NewOperation() {
                 <select
                   name="personId"
                   value={form.personId}
-                  onChange={handleChange}
+                  onChange={(e) => handlePersonChange(e.target.value)}
                   className="select"
                   required
                 >
@@ -314,14 +337,24 @@ export default function NewOperation() {
               onChange={(e) => handleBookmakerChange(e.target.value)}
               className="select"
               required
+              disabled={!form.personId}
             >
-              <option value="">Seleccionar casa</option>
-              {bookmakers.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.name} - Bono hasta {b.maxBonus}€ ({b.bonusType === 'always' ? 'Siempre' : 'Solo si pierdes'})
-                </option>
-              ))}
+              <option value="">{form.personId ? 'Seleccionar casa' : 'Primero selecciona una persona'}</option>
+              {bookmakers.map(b => {
+                const isUsed = usedBookmakerIds.includes(b.id)
+                return (
+                  <option key={b.id} value={b.id} disabled={isUsed}>
+                    {b.name} - Bono hasta {b.maxBonus}€ ({b.bonusType === 'always' ? 'Siempre' : 'Solo si pierdes'})
+                    {isUsed && ' ✓ Ya usada'}
+                  </option>
+                )
+              })}
             </select>
+            {form.personId && usedBookmakerIds.length > 0 && (
+              <p className="text-sm text-gray-400 mt-2">
+                Las casas marcadas con ✓ ya fueron usadas con esta persona
+              </p>
+            )}
 
             {/* Bookmaker info */}
             {selectedBookmaker && (
