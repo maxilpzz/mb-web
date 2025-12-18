@@ -92,6 +92,9 @@ model Operation {
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  // Una persona solo puede tener una operación por casa de apuestas
+  @@unique([personId, bookmakerId])
 }
 
 // Depósitos (para casas que requieren múltiples depósitos como Sportium)

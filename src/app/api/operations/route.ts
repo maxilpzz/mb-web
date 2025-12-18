@@ -140,8 +140,16 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(operation, { status: 201 })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating operation:', error)
+
+    // Manejar error de constraint único de Prisma
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+      return NextResponse.json({
+        error: 'Esta persona ya tiene una operación con esta casa de apuestas'
+      }, { status: 400 })
+    }
+
     return NextResponse.json({ error: 'Error al crear operación' }, { status: 500 })
   }
 }

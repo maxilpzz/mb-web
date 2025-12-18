@@ -70,8 +70,8 @@ function NewOperationContent() {
     // Cargar datos de la persona, casas de apuestas, y operaciones existentes
     Promise.all([
       fetch(`/api/persons/${personId}`).then(res => res.ok ? res.json() : null),
-      fetch('/api/bookmakers').then(res => res.json()),
-      fetch(`/api/operations?personId=${personId}`).then(res => res.json())
+      fetch('/api/bookmakers').then(res => res.ok ? res.json() : []),
+      fetch(`/api/operations?personId=${personId}`).then(res => res.ok ? res.json() : [])
     ]).then(([personData, bookmakersData, operationsData]) => {
       if (!personData) {
         router.push('/persons')
@@ -81,11 +81,17 @@ function NewOperationContent() {
       setPerson(personData)
       setBookmakers(Array.isArray(bookmakersData) ? bookmakersData : [])
 
+      // Extraer IDs de bookmakers ya usados (con fallback a bookmaker.id)
       if (Array.isArray(operationsData)) {
-        const usedIds = operationsData.map((op: { bookmakerId: string }) => op.bookmakerId)
+        const usedIds = operationsData.map((op: { bookmakerId?: string; bookmaker?: { id: string } }) =>
+          op.bookmakerId || op.bookmaker?.id
+        ).filter(Boolean) as string[]
         setUsedBookmakerIds(usedIds)
       }
 
+      setLoading(false)
+    }).catch(err => {
+      console.error('Error loading data:', err)
       setLoading(false)
     })
   }, [personId, router])
