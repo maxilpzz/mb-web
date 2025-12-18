@@ -16,6 +16,9 @@ interface Person {
   balance: number
   totalProfit: number
   operationsCount: number
+  pendingOperations: number
+  availableBookmakers: number
+  hasAvailableBookmakers: boolean
 }
 
 export default function PersonsPage() {
@@ -26,6 +29,7 @@ export default function PersonsPage() {
   const [newPerson, setNewPerson] = useState({ name: '', phone: '', notes: '', commission: '' })
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(false)
 
   useEffect(() => {
     fetchPersons()
@@ -101,7 +105,7 @@ export default function PersonsPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Personas</h1>
           <div className="flex gap-4">
             <button onClick={() => setShowNew(true)} className="btn btn-primary">
@@ -111,6 +115,28 @@ export default function PersonsPage() {
               ← Volver
             </Link>
           </div>
+        </div>
+
+        {/* Toggle para filtrar */}
+        <div className="flex items-center gap-3 mb-6">
+          <span className={`text-sm ${!showOnlyAvailable ? 'text-white font-medium' : 'text-gray-400'}`}>
+            Todas
+          </span>
+          <button
+            onClick={() => setShowOnlyAvailable(!showOnlyAvailable)}
+            className={`relative w-14 h-7 rounded-full transition-colors ${
+              showOnlyAvailable ? 'bg-blue-600' : 'bg-gray-600'
+            }`}
+          >
+            <span
+              className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ${
+                showOnlyAvailable ? 'translate-x-8' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          <span className={`text-sm ${showOnlyAvailable ? 'text-white font-medium' : 'text-gray-400'}`}>
+            Con casas disponibles
+          </span>
         </div>
 
         {/* Formulario nueva persona */}
@@ -214,68 +240,137 @@ export default function PersonsPage() {
               </button>
             </div>
           ) : (
-            persons.map(person => (
-              <div
-                key={person.id}
-                onClick={() => router.push(`/persons/${person.id}`)}
-                className="card block hover:bg-gray-600 transition-colors cursor-pointer"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold">{person.name}</h3>
-                    {person.phone && <p className="text-sm text-gray-400">{person.phone}</p>}
-                    {person.commission > 0 && (
-                      <p className="text-sm text-purple-400">Comisión acordada: {formatMoney(person.commission)}</p>
-                    )}
-                    {person.notes && <p className="text-sm text-gray-500">{person.notes}</p>}
-                  </div>
-                  <div className="text-right flex items-start gap-2">
-                    <div>
-                      <p className={`text-xl font-bold ${person.balance > 0 ? 'positive' : person.balance < 0 ? 'negative' : ''}`}>
-                        {person.balance > 0 ? 'Te debe ' : person.balance < 0 ? 'Le debes ' : ''}
-                        {formatMoney(Math.abs(person.balance))}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        {person.operationsCount} operaciones
-                      </p>
-                    </div>
+            (() => {
+              // Filtrar y ordenar personas
+              const filtered = showOnlyAvailable
+                ? persons.filter(p => p.hasAvailableBookmakers)
+                : persons
+
+              // Ordenar: primero los que tienen casas disponibles, luego los que no
+              const sorted = [...filtered].sort((a, b) => {
+                if (a.hasAvailableBookmakers && !b.hasAvailableBookmakers) return -1
+                if (!a.hasAvailableBookmakers && b.hasAvailableBookmakers) return 1
+                return 0
+              })
+
+              if (sorted.length === 0) {
+                return (
+                  <div className="card text-center py-8">
+                    <p className="text-gray-400">No hay personas con casas disponibles</p>
                     <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setDeletingId(person.id)
-                      }}
-                      className="text-gray-500 hover:text-red-500 transition-colors p-1"
-                      title="Eliminar persona"
+                      onClick={() => setShowOnlyAvailable(false)}
+                      className="btn btn-secondary mt-4"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      Ver todas
                     </button>
                   </div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-400">Bizum enviado</p>
-                    <p className="font-medium">{formatMoney(person.totalBizumSent)}</p>
+                )
+              }
+
+              return sorted.map(person => {
+                const isCompleted = !person.hasAvailableBookmakers
+
+                return (
+                  <div
+                    key={person.id}
+                    onClick={() => router.push(`/persons/${person.id}`)}
+                    className={`card block transition-colors cursor-pointer ${
+                      isCompleted
+                        ? 'opacity-50 bg-gray-800/50 hover:bg-gray-700/50'
+                        : 'hover:bg-gray-600'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-lg font-semibold ${isCompleted ? 'text-gray-400' : ''}`}>
+                            {person.name}
+                          </h3>
+                          {person.pendingOperations > 0 && (
+                            <span className="px-2 py-0.5 bg-yellow-600/30 text-yellow-400 text-xs rounded-full">
+                              {person.pendingOperations} en curso
+                            </span>
+                          )}
+                          {isCompleted && (
+                            <span className="px-2 py-0.5 bg-gray-600/50 text-gray-400 text-xs rounded-full">
+                              Completado
+                            </span>
+                          )}
+                        </div>
+                        {person.phone && <p className="text-sm text-gray-400">{person.phone}</p>}
+                        {person.commission > 0 && (
+                          <p className={`text-sm ${isCompleted ? 'text-purple-400/60' : 'text-purple-400'}`}>
+                            Comisión acordada: {formatMoney(person.commission)}
+                          </p>
+                        )}
+                        {!isCompleted && person.availableBookmakers > 0 && (
+                          <p className="text-sm text-blue-400">
+                            {person.availableBookmakers} casa{person.availableBookmakers !== 1 ? 's' : ''} disponible{person.availableBookmakers !== 1 ? 's' : ''}
+                          </p>
+                        )}
+                        {person.notes && <p className="text-sm text-gray-500">{person.notes}</p>}
+                      </div>
+                      <div className="text-right flex items-start gap-2">
+                        <div>
+                          <p className={`text-xl font-bold ${
+                            isCompleted
+                              ? 'text-gray-500'
+                              : person.balance > 0
+                                ? 'positive'
+                                : person.balance < 0
+                                  ? 'negative'
+                                  : ''
+                          }`}>
+                            {person.balance > 0 ? 'Te debe ' : person.balance < 0 ? 'Le debes ' : ''}
+                            {formatMoney(Math.abs(person.balance))}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            {person.operationsCount} operaciones
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setDeletingId(person.id)
+                          }}
+                          className="text-gray-500 hover:text-red-500 transition-colors p-1"
+                          title="Eliminar persona"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className={`mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm ${isCompleted ? 'opacity-70' : ''}`}>
+                      <div>
+                        <p className="text-gray-400">Bizum enviado</p>
+                        <p className="font-medium">{formatMoney(person.totalBizumSent)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Devuelto</p>
+                        <p className="font-medium">{formatMoney(person.totalMoneyReturned)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Comisiones pagadas</p>
+                        <p className="font-medium">{formatMoney(person.totalCommissionPaid)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Beneficio generado</p>
+                        <p className={`font-medium ${
+                          isCompleted
+                            ? 'text-gray-400'
+                            : person.totalProfit >= 0 ? 'positive' : 'negative'
+                        }`}>
+                          {formatMoney(person.totalProfit)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-400">Devuelto</p>
-                    <p className="font-medium">{formatMoney(person.totalMoneyReturned)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Comisiones pagadas</p>
-                    <p className="font-medium">{formatMoney(person.totalCommissionPaid)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Beneficio generado</p>
-                    <p className={`font-medium ${person.totalProfit >= 0 ? 'positive' : 'negative'}`}>
-                      {formatMoney(person.totalProfit)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))
+                )
+              })
+            })()
           )}
         </div>
       </div>

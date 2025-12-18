@@ -4,6 +4,11 @@ import { prisma } from '@/lib/db'
 // GET: Obtener todas las personas con sus saldos
 export async function GET() {
   try {
+    // Obtener total de casas de apuestas disponibles
+    const totalBookmakers = await prisma.bookmaker.count({
+      where: { isActive: true }
+    })
+
     const persons = await prisma.person.findMany({
       include: {
         operations: {
@@ -29,6 +34,15 @@ export async function GET() {
         return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)
       }, 0)
 
+      // Contar operaciones pendientes (no completadas ni canceladas)
+      const pendingOperations = person.operations.filter(
+        op => op.status !== 'completed' && op.status !== 'cancelled'
+      ).length
+
+      // Calcular casas de apuestas disponibles
+      const usedBookmakers = person.operations.length
+      const availableBookmakers = totalBookmakers - usedBookmakers
+
       // Return only the fields needed by the frontend
       return {
         id: person.id,
@@ -42,7 +56,10 @@ export async function GET() {
         totalCommissionPaid,
         balance, // Positivo = te debe, Negativo = le debes
         totalProfit,
-        operationsCount: person.operations.length
+        operationsCount: person.operations.length,
+        pendingOperations,
+        availableBookmakers,
+        hasAvailableBookmakers: availableBookmakers > 0
       }
     })
 
