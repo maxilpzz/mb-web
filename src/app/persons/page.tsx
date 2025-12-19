@@ -10,6 +10,7 @@ interface Person {
   phone: string | null
   notes: string | null
   commission: number
+  paused: boolean
   totalBizumSent: number
   totalMoneyReturned: number
   totalCommissionPaid: number
@@ -84,6 +85,18 @@ export default function PersonsPage() {
     } else {
       const data = await res.json()
       setDeleteError(data.error || 'Error al eliminar')
+    }
+  }
+
+  const handleTogglePause = async (id: string, currentPaused: boolean) => {
+    const res = await fetch(`/api/persons/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paused: !currentPaused })
+    })
+
+    if (res.ok) {
+      fetchPersons()
     }
   }
 
@@ -269,6 +282,7 @@ export default function PersonsPage() {
 
               return sorted.map(person => {
                 const isCompleted = !person.hasAvailableBookmakers
+                const isPaused = person.paused
 
                 return (
                   <div
@@ -291,7 +305,12 @@ export default function PersonsPage() {
                               {person.pendingOperations} en curso
                             </span>
                           )}
-                          {isCompleted && (
+                          {isPaused && (
+                            <span className="px-2 py-0.5 bg-orange-600/30 text-orange-400 text-xs rounded-full">
+                              Pausado
+                            </span>
+                          )}
+                          {isCompleted && !isPaused && (
                             <span className="px-2 py-0.5 bg-gray-600/50 text-gray-400 text-xs rounded-full">
                               Completado
                             </span>
@@ -303,9 +322,14 @@ export default function PersonsPage() {
                             Comisión acordada: {formatMoney(person.commission)}
                           </p>
                         )}
-                        {!isCompleted && person.availableBookmakers > 0 && (
+                        {!isCompleted && !isPaused && person.availableBookmakers > 0 && (
                           <p className="text-sm text-blue-400">
                             {person.availableBookmakers} casa{person.availableBookmakers !== 1 ? 's' : ''} disponible{person.availableBookmakers !== 1 ? 's' : ''}
+                          </p>
+                        )}
+                        {isPaused && person.availableBookmakers > 0 && (
+                          <p className="text-sm text-gray-500">
+                            {person.availableBookmakers} casa{person.availableBookmakers !== 1 ? 's' : ''} disponible{person.availableBookmakers !== 1 ? 's' : ''} (pausado)
                           </p>
                         )}
                         {person.notes && <p className="text-sm text-gray-500">{person.notes}</p>}
@@ -328,6 +352,33 @@ export default function PersonsPage() {
                             {person.operationsCount} operaciones
                           </p>
                         </div>
+                        {/* Botón pausar/reanudar */}
+                        {person.availableBookmakers > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleTogglePause(person.id, person.paused)
+                            }}
+                            className={`p-1 transition-colors ${
+                              isPaused
+                                ? 'text-orange-400 hover:text-orange-300'
+                                : 'text-gray-500 hover:text-orange-400'
+                            }`}
+                            title={isPaused ? 'Reanudar persona' : 'Pausar persona'}
+                          >
+                            {isPaused ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.preventDefault()

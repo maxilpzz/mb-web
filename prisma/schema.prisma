@@ -18,6 +18,7 @@ model Person {
   notes          String?
   commission     Float    @default(0) // Comisión acordada con esta persona (por todas las casas)
   commissionPaid Float    @default(0) // Comisión ya pagada a esta persona
+  paused         Boolean  @default(false) // Si está pausada, no se muestran casas disponibles
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

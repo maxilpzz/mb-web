@@ -147,7 +147,7 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, phone, notes, commission, commissionPaid } = body
+    const { name, phone, notes, commission, commissionPaid, paused } = body
 
     const person = await prisma.person.update({
       where: { id },
@@ -156,7 +156,8 @@ export async function PATCH(
         ...(phone !== undefined && { phone }),
         ...(notes !== undefined && { notes }),
         ...(commission !== undefined && { commission }),
-        ...(commissionPaid !== undefined && { commissionPaid })
+        ...(commissionPaid !== undefined && { commissionPaid }),
+        ...(paused !== undefined && { paused })
       }
     })
 

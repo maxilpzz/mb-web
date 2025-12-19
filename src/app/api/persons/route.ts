@@ -51,6 +51,7 @@ export async function GET() {
         notes: person.notes,
         commission: person.commission,
         commissionPaid: person.commissionPaid,
+        paused: person.paused,
         totalBizumSent,
         totalMoneyReturned,
         totalCommissionPaid,
@@ -59,7 +60,8 @@ export async function GET() {
         operationsCount: person.operations.length,
         pendingOperations,
         availableBookmakers,
-        hasAvailableBookmakers: availableBookmakers > 0
+        // Si está pausada, se considera como sin casas disponibles
+        hasAvailableBookmakers: !person.paused && availableBookmakers > 0
       }
     })
 
