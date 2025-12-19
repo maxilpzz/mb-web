@@ -124,13 +124,13 @@ export default function PersonsPage() {
           </span>
           <button
             onClick={() => setShowOnlyAvailable(!showOnlyAvailable)}
-            className={`relative w-14 h-7 rounded-full transition-colors ${
+            className={`relative w-12 h-6 rounded-full transition-colors ${
               showOnlyAvailable ? 'bg-blue-600' : 'bg-gray-600'
             }`}
           >
             <span
-              className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ${
-                showOnlyAvailable ? 'translate-x-8' : 'translate-x-1'
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                showOnlyAvailable ? 'translate-x-6' : 'translate-x-0'
               }`}
             />
           </button>
