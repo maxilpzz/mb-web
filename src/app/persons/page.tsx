@@ -31,6 +31,7 @@ export default function PersonsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     fetchPersons()
@@ -130,26 +131,57 @@ export default function PersonsPage() {
           </div>
         </div>
 
-        {/* Toggle para filtrar */}
-        <div className="flex items-center gap-3 mb-6">
-          <span className={`text-sm ${!showOnlyAvailable ? 'text-white font-medium' : 'text-gray-400'}`}>
-            Todas
-          </span>
-          <button
-            onClick={() => setShowOnlyAvailable(!showOnlyAvailable)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${
-              showOnlyAvailable ? 'bg-blue-600' : 'bg-gray-600'
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
-                showOnlyAvailable ? 'translate-x-6' : 'translate-x-0'
-              }`}
+        {/* Buscador y filtros */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          {/* Buscador */}
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Buscar por nombre..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input w-full pl-10"
             />
-          </button>
-          <span className={`text-sm ${showOnlyAvailable ? 'text-white font-medium' : 'text-gray-400'}`}>
-            Con casas disponibles
-          </span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Toggle para filtrar */}
+          <div className="flex items-center gap-3">
+            <span className={`text-sm ${!showOnlyAvailable ? 'text-white font-medium' : 'text-gray-400'}`}>
+              Todas
+            </span>
+            <button
+              onClick={() => setShowOnlyAvailable(!showOnlyAvailable)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                showOnlyAvailable ? 'bg-blue-600' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
+                  showOnlyAvailable ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <span className={`text-sm ${showOnlyAvailable ? 'text-white font-medium' : 'text-gray-400'}`}>
+              Con casas disponibles
+            </span>
+          </div>
         </div>
 
         {/* Formulario nueva persona */}
@@ -254,10 +286,23 @@ export default function PersonsPage() {
             </div>
           ) : (
             (() => {
-              // Filtrar y ordenar personas
-              const filtered = showOnlyAvailable
-                ? persons.filter(p => p.hasAvailableBookmakers)
-                : persons
+              // Filtrar por búsqueda y disponibilidad
+              let filtered = persons
+
+              // Filtrar por término de búsqueda
+              if (searchTerm.trim()) {
+                const term = searchTerm.toLowerCase().trim()
+                filtered = filtered.filter(p =>
+                  p.name.toLowerCase().includes(term) ||
+                  (p.phone && p.phone.toLowerCase().includes(term)) ||
+                  (p.notes && p.notes.toLowerCase().includes(term))
+                )
+              }
+
+              // Filtrar por casas disponibles
+              if (showOnlyAvailable) {
+                filtered = filtered.filter(p => p.hasAvailableBookmakers)
+              }
 
               // Ordenar: primero los que tienen casas disponibles, luego los que no
               const sorted = [...filtered].sort((a, b) => {
@@ -269,13 +314,22 @@ export default function PersonsPage() {
               if (sorted.length === 0) {
                 return (
                   <div className="card text-center py-8">
-                    <p className="text-gray-400">No hay personas con casas disponibles</p>
-                    <button
-                      onClick={() => setShowOnlyAvailable(false)}
-                      className="btn btn-secondary mt-4"
-                    >
-                      Ver todas
-                    </button>
+                    <p className="text-gray-400">
+                      {searchTerm
+                        ? `No se encontraron personas con "${searchTerm}"`
+                        : 'No hay personas con casas disponibles'}
+                    </p>
+                    {(searchTerm || showOnlyAvailable) && (
+                      <button
+                        onClick={() => {
+                          setSearchTerm('')
+                          setShowOnlyAvailable(false)
+                        }}
+                        className="btn btn-secondary mt-4"
+                      >
+                        Limpiar filtros
+                      </button>
+                    )}
                   </div>
                 )
               }
