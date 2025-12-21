@@ -607,7 +607,8 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     oddsBack: bet.oddsBack,
     oddsLay: bet.oddsLay,
     liability: bet.liability,
-    result: bet.result
+    result: bet.result,
+    actualProfit: bet.actualProfit
   })))
 
   return (

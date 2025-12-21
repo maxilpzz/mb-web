@@ -98,6 +98,7 @@ export interface BetForOwesCalculation {
   oddsLay: number
   liability: number
   result: 'won' | 'lost' | null | string
+  actualProfit?: number | null  // Para apuestas manuales
 }
 
 export interface OwesBreakdown {
@@ -124,12 +125,42 @@ export function calculateOwes(bets: BetForOwesCalculation[]): OwesBreakdown {
   let pendingBets = 0
   const breakdown: OwesBreakdown['breakdown'] = []
 
-  bets.forEach((bet, index) => {
+  bets.forEach((bet) => {
     if (bet.result === null) {
       pendingBets++
       return
     }
 
+    // Detectar si es una apuesta manual (sin igualar)
+    const isManualBet = bet.oddsBack === 0 || bet.oddsLay === 0
+
+    if (isManualBet) {
+      // Apuesta manual: el actualProfit ES el dinero en la casa
+      const betMoneyInBookmaker = Math.max(0, bet.actualProfit || 0)
+
+      if (betMoneyInBookmaker > 0) {
+        moneyInBookmaker += betMoneyInBookmaker
+        breakdown.push({
+          betType: bet.betType,
+          result: 'won',
+          moneyInBookmaker: betMoneyInBookmaker,
+          liabilityLost: 0,
+          exchangeWinnings: 0
+        })
+      } else {
+        // No ganó nada, no hay dinero en la casa
+        breakdown.push({
+          betType: bet.betType,
+          result: 'lost',
+          moneyInBookmaker: 0,
+          liabilityLost: 0,
+          exchangeWinnings: 0
+        })
+      }
+      return
+    }
+
+    // Apuesta con lay: calcular normalmente
     const layStake = bet.liability / (bet.oddsLay - 1)
 
     if (bet.result === 'won') {
