@@ -52,6 +52,12 @@ export default function RegisterPage() {
         return
       }
 
+      // Si el usuario ya está confirmado (email confirmation desactivado), ir directo al login
+      if (data.user?.email_confirmed_at) {
+        window.location.href = '/login'
+        return
+      }
+
       setSuccess(true)
     } catch (err) {
       console.error('Signup error:', err)
