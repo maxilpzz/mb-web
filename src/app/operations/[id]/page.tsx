@@ -452,11 +452,11 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
   const handleQuickProfit = async () => {
     if (!operation) return
 
-    const profit = parseFloat(quickProfitAmount)
-    if (isNaN(profit)) {
-      alert('Introduce una cantidad válida')
+    if (quickProfitAmount === '') {
+      alert('Introduce una cantidad (puede ser 0)')
       return
     }
+    const profit = parseFloat(quickProfitAmount) || 0
 
     setSavingQuickProfit(true)
 
