@@ -19,21 +19,31 @@ export default function LoginPage() {
 
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      console.log('Intentando login...')
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      setError(error.message === 'Invalid login credentials'
-        ? 'Email o contraseña incorrectos'
-        : error.message)
+      console.log('Login response:', { data, error })
+
+      if (error) {
+        setError(error.message === 'Invalid login credentials'
+          ? 'Email o contraseña incorrectos'
+          : error.message)
+        setLoading(false)
+        return
+      }
+
+      console.log('Login exitoso, redirigiendo...')
+      router.push('/')
+      router.refresh()
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('Error de conexión')
       setLoading(false)
-      return
     }
-
-    router.push('/')
-    router.refresh()
   }
 
   return (
