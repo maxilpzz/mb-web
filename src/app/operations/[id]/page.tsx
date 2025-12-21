@@ -34,6 +34,8 @@ interface Bookmaker {
   notes: string | null
   numQualifying: number
   numFreebets: number
+  freebetValue: number | null
+  maxBonus: number
 }
 
 interface Operation {
@@ -332,6 +334,9 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     oddsLay: '',
     eventName: ''
   })
+  const [showQuickProfit, setShowQuickProfit] = useState(false)
+  const [quickProfitAmount, setQuickProfitAmount] = useState('')
+  const [savingQuickProfit, setSavingQuickProfit] = useState(false)
   const [editForm, setEditForm] = useState({
     bizumSent: '',
     moneyReturned: '',
@@ -442,6 +447,53 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
       alert('Error al añadir qualifying')
     }
     setAddingQualifying(false)
+  }
+
+  const handleQuickProfit = async () => {
+    if (!operation) return
+
+    const profit = parseFloat(quickProfitAmount)
+    if (isNaN(profit)) {
+      alert('Introduce una cantidad válida')
+      return
+    }
+
+    setSavingQuickProfit(true)
+
+    // Crear una freebet con el valor total del bono y registrar el profit directamente
+    const totalBonus = operation.bookmaker.numFreebets * (operation.bookmaker.freebetValue || 0)
+
+    // Primero crear la freebet sin cuotas (manual)
+    const createRes = await fetch(`/api/operations/${id}/bets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        betType: 'freebet',
+        stake: totalBonus || 150, // fallback
+        oddsBack: 0,
+        oddsLay: 0,
+        eventName: 'Freebets sin igualar'
+      })
+    })
+
+    if (createRes.ok) {
+      const newBet = await createRes.json()
+
+      // Ahora registrar el profit
+      await fetch(`/api/bets/${newBet.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actualProfit: profit })
+      })
+
+      setShowQuickProfit(false)
+      setQuickProfitAmount('')
+      fetchOperation()
+    } else {
+      alert('Error al registrar ganancias')
+    }
+
+    setSavingQuickProfit(false)
   }
 
   const handleSaveEdit = async () => {
@@ -876,13 +928,25 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                   Apuestas Freebet ({freebetBets.filter(b => b.result !== null).length}/{freebetBets.length})
                   {!allQualifyingDone && <span className="text-sm text-gray-400 ml-2">- Completa qualifying primero</span>}
                 </h2>
-                {allQualifyingDone && canAddMoreFreebets && (
-                  <button
-                    onClick={() => setShowAddFreebet(true)}
-                    className="btn btn-primary text-sm"
-                  >
-                    + Añadir Freebet
-                  </button>
+                {allQualifyingDone && (
+                  <div className="flex gap-2">
+                    {canAddMoreFreebets && (
+                      <button
+                        onClick={() => setShowAddFreebet(true)}
+                        className="btn btn-primary text-sm"
+                      >
+                        + Añadir Freebet
+                      </button>
+                    )}
+                    {freebetBets.length === 0 && (
+                      <button
+                        onClick={() => setShowQuickProfit(true)}
+                        className="btn btn-secondary text-sm"
+                      >
+                        Registrar ganancias
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               {freebetBets.length > 0 ? (
@@ -1116,6 +1180,54 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                   setQualifyingForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '' })
                 }}
                 disabled={addingQualifying}
+                className="btn btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal registrar ganancias rápido */}
+      {showQuickProfit && operation && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="card max-w-md mx-4 w-full">
+            <h2 className="text-xl font-bold mb-4">Registrar ganancias freebets</h2>
+            <p className="text-gray-400 text-sm mb-4">
+              Introduce el total que has ganado con las freebets de {operation.bookmaker.name} (sin igualar).
+              <br />
+              Valor total de freebets: {formatMoney(operation.bookmaker.maxBonus || operation.bookmaker.numFreebets * (operation.bookmaker.freebetValue || 0))}
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Total ganado (€)</label>
+                <input
+                  type="number"
+                  value={quickProfitAmount}
+                  onChange={(e) => setQuickProfitAmount(e.target.value)}
+                  className="input text-2xl text-center"
+                  placeholder="0.00"
+                  step="0.01"
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">Pon 0 si perdiste todas las freebets</p>
+              </div>
+            </div>
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={handleQuickProfit}
+                disabled={savingQuickProfit}
+                className="btn btn-primary flex-1"
+              >
+                {savingQuickProfit ? 'Guardando...' : 'Guardar'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowQuickProfit(false)
+                  setQuickProfitAmount('')
+                }}
+                disabled={savingQuickProfit}
                 className="btn btn-secondary flex-1"
               >
                 Cancelar
