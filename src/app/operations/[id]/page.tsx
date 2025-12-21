@@ -32,6 +32,8 @@ interface Bookmaker {
   bonusType: string
   promoCode: string | null
   notes: string | null
+  numQualifying: number
+  numFreebets: number
 }
 
 interface Operation {
@@ -825,7 +827,9 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
         {(() => {
           const qualifyingBets = operation.bets.filter(b => b.betType === 'qualifying')
           const allQualifyingDone = qualifyingBets.every(b => b.result !== null)
-          const canAddQualifying = operation.status === 'pending' || operation.status === 'qualifying' || !allQualifyingDone
+          const maxQualifying = operation.bookmaker.numQualifying || 999
+          const canAddMoreQualifying = qualifyingBets.length < maxQualifying
+          const canAddQualifying = canAddMoreQualifying && (operation.status === 'pending' || operation.status === 'qualifying' || !allQualifyingDone)
 
           return (
             <div className="card mb-6">
@@ -862,6 +866,8 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
           const qualifyingBets = operation.bets.filter(b => b.betType === 'qualifying')
           const freebetBets = operation.bets.filter(b => b.betType === 'freebet')
           const allQualifyingDone = qualifyingBets.every(b => b.result !== null)
+          const maxFreebets = operation.bookmaker.numFreebets || 999
+          const canAddMoreFreebets = freebetBets.length < maxFreebets
 
           return (
             <div className={`card mb-6 ${!allQualifyingDone ? 'opacity-50' : ''}`}>
@@ -870,7 +876,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                   Apuestas Freebet ({freebetBets.filter(b => b.result !== null).length}/{freebetBets.length})
                   {!allQualifyingDone && <span className="text-sm text-gray-400 ml-2">- Completa qualifying primero</span>}
                 </h2>
-                {allQualifyingDone && (
+                {allQualifyingDone && canAddMoreFreebets && (
                   <button
                     onClick={() => setShowAddFreebet(true)}
                     className="btn btn-primary text-sm"
