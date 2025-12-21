@@ -33,24 +33,32 @@ export default function RegisterPage() {
 
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
 
-    if (error) {
-      setError(error.message === 'User already registered'
-        ? 'Este email ya está registrado'
-        : error.message)
+      console.log('Signup response:', { data, error })
+
+      if (error) {
+        setError(error.message === 'User already registered'
+          ? 'Este email ya está registrado'
+          : error.message)
+        setLoading(false)
+        return
+      }
+
+      setSuccess(true)
+    } catch (err) {
+      console.error('Signup error:', err)
+      setError('Error de conexión. Inténtalo de nuevo.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    setSuccess(true)
-    setLoading(false)
   }
 
   if (success) {
