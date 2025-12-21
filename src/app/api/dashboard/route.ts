@@ -122,11 +122,12 @@ export async function GET() {
         createdAt: op.createdAt
       }))
 
-    // Estadísticas por casa de apuestas
+    // Estadísticas por casa de apuestas (filtradas por usuario)
     const bookmakerStats = await prisma.bookmaker.findMany({
       where: { isActive: true },
       include: {
         operations: {
+          where: { userId: user.id },
           include: { bets: true }
         }
       }
