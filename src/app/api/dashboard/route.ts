@@ -1,52 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-
-// Calcular dinero en la casa para una operación
-function calculateMoneyInBookmaker(bets: Array<{
-  betType: string
-  stake: number
-  oddsBack: number
-  result: string | null
-}>, deposits: Array<{ amount: number }>): number {
-  // Separar qualifying y freebet
-  const qualifyingBets = bets.filter(b => b.betType === 'qualifying')
-  const freebetBets = bets.filter(b => b.betType === 'freebet')
-
-  // Si no hay qualifying resueltas, el dinero depositado sigue en la casa
-  const resolvedQualifying = qualifyingBets.filter(b => b.result !== null)
-
-  if (resolvedQualifying.length === 0) {
-    // Mientras no haya resultados de qualifying, el dinero depositado sigue en la casa
-    return deposits.reduce((sum, d) => sum + d.amount, 0)
-  }
-
-  // Calcular dinero que quedó en la casa según resultados
-  let moneyInBookmaker = 0
-
-  // Qualifying bets
-  for (const bet of qualifyingBets) {
-    if (bet.result === 'won') {
-      // Ganó en la casa: stake * odds
-      moneyInBookmaker += bet.stake * bet.oddsBack
-    } else if (bet.result === null) {
-      // Pendiente: el stake sigue en la casa
-      moneyInBookmaker += bet.stake
-    }
-    // Si perdió (result === 'lost'), el dinero está en el exchange, no suma
-  }
-
-  // Freebet bets - SOLO cuentan si ya se resolvieron y ganaron
-  // El stake de freebet pendiente NO es dinero real (es un bono)
-  for (const bet of freebetBets) {
-    if (bet.result === 'won') {
-      // Ganó en la casa: solo ganancias (stake * (odds - 1)), no el stake
-      moneyInBookmaker += bet.stake * (bet.oddsBack - 1)
-    }
-    // Si está pendiente o perdió, no suma nada (freebet no es dinero real)
-  }
-
-  return moneyInBookmaker
-}
+import { calculateOwes } from '@/lib/calculations'
 
 // GET: Obtener estadísticas del dashboard
 export async function GET() {
@@ -74,12 +28,26 @@ export async function GET() {
     const totalMoneyReturned = operations.reduce((sum, op) => sum + op.moneyReturned, 0)
     const totalCommissionPaid = operations.reduce((sum, op) => sum + op.commissionPaid, 0)
 
-    // Pendiente de cobro = dinero total en las casas - lo que ya te devolvieron
+    // Pendiente de cobro = dinero total en las casas - lo que ya te devolvieron - comisiones pagadas
     const totalMoneyInBookmaker = operations.reduce((sum, op) => {
-      return sum + calculateMoneyInBookmaker(op.bets, op.deposits)
+      const owesData = calculateOwes(op.bets.map(bet => ({
+        betType: bet.betType,
+        stake: bet.stake,
+        oddsBack: bet.oddsBack,
+        oddsLay: bet.oddsLay,
+        liability: bet.liability,
+        result: bet.result,
+        actualProfit: bet.actualProfit
+      })))
+      return sum + owesData.totalOwes
     }, 0)
-    // Deuda real pendiente (descontando lo ya devuelto)
-    const pendingToCollect = Math.max(0, totalMoneyInBookmaker - totalMoneyReturned)
+
+    // Obtener total de comisiones pagadas a nivel de persona
+    const allPersons = await prisma.person.findMany()
+    const totalPersonCommissionPaid = allPersons.reduce((sum, p) => sum + p.commissionPaid, 0)
+
+    // Deuda real pendiente (descontando lo ya devuelto y comisiones pagadas)
+    const pendingToCollect = Math.max(0, totalMoneyInBookmaker - totalMoneyReturned - totalPersonCommissionPaid)
 
     const totalLiability = operations
       .filter(op => op.status !== 'completed' && op.status !== 'cancelled')
@@ -104,19 +72,28 @@ export async function GET() {
     const personsWithDebt = persons.map(person => {
       // Calcular el dinero total que está en las casas de apuestas de esta persona
       const moneyInBookmaker = person.operations.reduce((sum, op) => {
-        return sum + calculateMoneyInBookmaker(op.bets, op.deposits)
+        const owesData = calculateOwes(op.bets.map(bet => ({
+          betType: bet.betType,
+          stake: bet.stake,
+          oddsBack: bet.oddsBack,
+          oddsLay: bet.oddsLay,
+          liability: bet.liability,
+          result: bet.result,
+          actualProfit: bet.actualProfit
+        })))
+        return sum + owesData.totalOwes
       }, 0)
 
-      // Restar el dinero que ya te devolvió
+      // Restar el dinero que ya te devolvió y la comisión pagada
       const returned = person.operations.reduce((sum, op) => sum + op.moneyReturned, 0)
 
-      // Deuda pendiente = dinero en casa - lo que ya devolvió
-      const remainingDebt = moneyInBookmaker - returned
+      // Deuda pendiente = dinero en casa - lo que ya devolvió - comisión pagada
+      const remainingDebt = moneyInBookmaker - returned - person.commissionPaid
 
       return {
         id: person.id,
         name: person.name,
-        balance: remainingDebt, // Positivo = te debe (dinero en casa - devuelto)
+        balance: remainingDebt, // Positivo = te debe (dinero en casa - devuelto - comisión)
         moneyInBookmaker, // Total en la casa
         returned // Lo que ya devolvió
       }
