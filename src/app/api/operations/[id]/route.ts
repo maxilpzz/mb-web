@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener una operación por ID
 export async function GET(
@@ -7,6 +8,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
 
     const operation = await prisma.operation.findUnique({
@@ -25,6 +31,11 @@ export async function GET(
 
     if (!operation) {
       return NextResponse.json({ error: 'Operación no encontrada' }, { status: 404 })
+    }
+
+    // Verificar que la operación pertenece al usuario
+    if (operation.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     // Calcular totales
@@ -59,7 +70,26 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Verificar que la operación pertenece al usuario
+    const existingOperation = await prisma.operation.findUnique({
+      where: { id }
+    })
+
+    if (!existingOperation) {
+      return NextResponse.json({ error: 'Operación no encontrada' }, { status: 404 })
+    }
+
+    if (existingOperation.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { status, bizumSent, moneyReturned, commissionPaid, notes } = body
 
@@ -94,7 +124,25 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Verificar que la operación pertenece al usuario
+    const existingOperation = await prisma.operation.findUnique({
+      where: { id }
+    })
+
+    if (!existingOperation) {
+      return NextResponse.json({ error: 'Operación no encontrada' }, { status: 404 })
+    }
+
+    if (existingOperation.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
 
     await prisma.operation.delete({
       where: { id }

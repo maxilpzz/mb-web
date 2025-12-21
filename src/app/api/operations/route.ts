@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener todas las operaciones
 export async function GET(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const personId = searchParams.get('personId')
     const status = searchParams.get('status')
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { userId: user.id }
     if (personId) where.personId = personId
     if (status) where.status = status
 
@@ -53,6 +59,11 @@ export async function GET(request: Request) {
 // POST: Crear una nueva operación con apuestas
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { personId, bookmakerId, bizumSent, moneyReturned, commissionPaid, deposits, bets, notes } = body
 
@@ -63,6 +74,7 @@ export async function POST(request: Request) {
     // Verificar si ya existe una operación con esta persona y casa de apuestas
     const existingOperation = await prisma.operation.findFirst({
       where: {
+        userId: user.id,
         personId,
         bookmakerId
       },
@@ -90,6 +102,7 @@ export async function POST(request: Request) {
     // Crear operación con depósitos y apuestas
     const operation = await prisma.operation.create({
       data: {
+        userId: user.id,
         personId,
         bookmakerId,
         bizumSent: bizumSent || 0,

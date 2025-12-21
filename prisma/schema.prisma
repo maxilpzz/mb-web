@@ -13,6 +13,7 @@ datasource db {
 // Personas con las que haces operaciones
 model Person {
   id             String   @id @default(cuid())
+  userId         String?  // ID del usuario de Supabase Auth (temporal opcional para migración)
   name           String
   phone          String?  // Teléfono para identificar en Bizum
   notes          String?
@@ -24,6 +25,8 @@ model Person {
 
   operations   Operation[]
   transactions Transaction[]
+
+  @@index([userId])
 }
 
 // Casas de apuestas con configuración de bonos
@@ -71,6 +74,7 @@ model Bookmaker {
 // Cada operación de bono
 model Operation {
   id              String    @id @default(cuid())
+  userId          String?   // ID del usuario de Supabase Auth (temporal opcional para migración)
   personId        String
   person          Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
 
@@ -96,6 +100,7 @@ model Operation {
 
   // Una persona solo puede tener una operación por casa de apuestas
   @@unique([personId, bookmakerId])
+  @@index([userId])
 }
 
 // Depósitos (para casas que requieren múltiples depósitos como Sportium)
@@ -154,9 +159,12 @@ model Transaction {
   createdAt   DateTime @default(now())
 }
 
-// Configuración global (saldo del exchange, etc.)
+// Configuración por usuario (saldo del exchange, etc.)
 model Settings {
-  id              String   @id @default("global")
+  id              String   @id @default(cuid())
+  userId          String?  // ID del usuario de Supabase Auth (temporal opcional para migración)
   exchangeBalance Float    @default(0) // Saldo actual en el exchange (Betfair)
   updatedAt       DateTime @updatedAt
+
+  @@index([userId])
 }

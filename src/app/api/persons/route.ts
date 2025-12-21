@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateOwes } from '@/lib/calculations'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener todas las personas con sus saldos
 export async function GET() {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     // Obtener total de casas de apuestas disponibles
     const totalBookmakers = await prisma.bookmaker.count({
       where: { isActive: true }
     })
 
     const persons = await prisma.person.findMany({
+      where: { userId: user.id },
       include: {
         operations: {
           include: {
@@ -93,6 +100,11 @@ export async function GET() {
 // POST: Crear una nueva persona
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { name, phone, notes, commission } = body
 
@@ -102,6 +114,7 @@ export async function POST(request: Request) {
 
     const person = await prisma.person.create({
       data: {
+        userId: user.id,
         name,
         phone,
         notes,

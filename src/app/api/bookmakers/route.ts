@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener todas las casas de apuestas activas
 export async function GET() {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Bookmakers are shared across all users
     const bookmakers = await prisma.bookmaker.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' }

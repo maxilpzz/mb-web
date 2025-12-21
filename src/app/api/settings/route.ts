@@ -1,17 +1,23 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/supabase/server'
 
-// GET /api/settings - Obtener configuración global
+// GET /api/settings - Obtener configuración del usuario
 export async function GET() {
   try {
-    // Buscar o crear la configuración global
-    let settings = await prisma.settings.findUnique({
-      where: { id: 'global' }
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Buscar o crear la configuración del usuario
+    let settings = await prisma.settings.findFirst({
+      where: { userId: user.id }
     })
 
     if (!settings) {
       settings = await prisma.settings.create({
-        data: { id: 'global', exchangeBalance: 0 }
+        data: { userId: user.id, exchangeBalance: 0 }
       })
     }
 
@@ -25,22 +31,38 @@ export async function GET() {
   }
 }
 
-// PATCH /api/settings - Actualizar configuración global
+// PATCH /api/settings - Actualizar configuración del usuario
 export async function PATCH(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { exchangeBalance } = body
 
-    const settings = await prisma.settings.upsert({
-      where: { id: 'global' },
-      update: {
-        exchangeBalance: exchangeBalance !== undefined ? exchangeBalance : undefined
-      },
-      create: {
-        id: 'global',
-        exchangeBalance: exchangeBalance || 0
-      }
+    // Buscar settings existente del usuario
+    const existingSettings = await prisma.settings.findFirst({
+      where: { userId: user.id }
     })
+
+    let settings
+    if (existingSettings) {
+      settings = await prisma.settings.update({
+        where: { id: existingSettings.id },
+        data: {
+          exchangeBalance: exchangeBalance !== undefined ? exchangeBalance : undefined
+        }
+      })
+    } else {
+      settings = await prisma.settings.create({
+        data: {
+          userId: user.id,
+          exchangeBalance: exchangeBalance || 0
+        }
+      })
+    }
 
     return NextResponse.json(settings)
   } catch (error) {

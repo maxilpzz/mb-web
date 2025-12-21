@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateOwes } from '@/lib/calculations'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener detalle de una persona con sus operaciones
 export async function GET(
@@ -8,6 +9,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
 
     const person = await prisma.person.findUnique({
@@ -26,6 +32,11 @@ export async function GET(
 
     if (!person) {
       return NextResponse.json({ error: 'Persona no encontrada' }, { status: 404 })
+    }
+
+    // Verificar que la persona pertenece al usuario
+    if (person.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     // Calcular totales usando calculateOwes para manejar apuestas manuales correctamente
@@ -90,6 +101,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
 
     // Verificar si tiene operaciones asociadas
@@ -100,6 +116,11 @@ export async function DELETE(
 
     if (!person) {
       return NextResponse.json({ error: 'Persona no encontrada' }, { status: 404 })
+    }
+
+    // Verificar que la persona pertenece al usuario
+    if (person.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     if (person.operations.length > 0) {
@@ -127,7 +148,26 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
+
+    // Verificar que la persona pertenece al usuario
+    const existingPerson = await prisma.person.findUnique({
+      where: { id }
+    })
+
+    if (!existingPerson) {
+      return NextResponse.json({ error: 'Persona no encontrada' }, { status: 404 })
+    }
+
+    if (existingPerson.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { name, phone, notes, commission, commissionPaid, paused } = body
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 interface RevolutTransaction {
   Type: string
@@ -17,6 +18,11 @@ interface RevolutTransaction {
 // POST: Importar CSV de Revolut
 export async function POST(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { csvData } = body
 
@@ -46,8 +52,10 @@ export async function POST(request: Request) {
       return desc.includes('bizum') || t.Type?.toLowerCase().includes('transfer')
     })
 
-    // Obtener personas existentes para hacer match
-    const persons = await prisma.person.findMany()
+    // Obtener personas existentes del usuario para hacer match
+    const persons = await prisma.person.findMany({
+      where: { userId: user.id }
+    })
 
     let imported = 0
     let skipped = 0

@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateOwes } from '@/lib/calculations'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener estadísticas del dashboard
 export async function GET() {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     // Obtener todas las operaciones con apuestas
     const operations = await prisma.operation.findMany({
+      where: { userId: user.id },
       include: {
         bets: true,
         person: true,
@@ -43,7 +50,9 @@ export async function GET() {
     }, 0)
 
     // Obtener total de comisiones pagadas a nivel de persona
-    const allPersons = await prisma.person.findMany()
+    const allPersons = await prisma.person.findMany({
+      where: { userId: user.id }
+    })
     const totalPersonCommissionPaid = allPersons.reduce((sum, p) => sum + p.commissionPaid, 0)
 
     // Deuda real pendiente (descontando lo ya devuelto y comisiones pagadas)
@@ -59,6 +68,7 @@ export async function GET() {
 
     // Personas con saldo pendiente (basado en dinero real en la casa)
     const persons = await prisma.person.findMany({
+      where: { userId: user.id },
       include: {
         operations: {
           include: {

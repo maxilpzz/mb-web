@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateQualifyingProfit, calculateFreeBetProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 const COMMISSION = 0.02 // 2% comisión del exchange (Betfair)
 
@@ -10,17 +11,28 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
     const { result, actualProfit: manualProfit } = body
 
-    // Obtener la apuesta actual
+    // Obtener la apuesta actual con su operación para verificar ownership
     const bet = await prisma.bet.findUnique({
-      where: { id }
+      where: { id },
+      include: { operation: true }
     })
 
     if (!bet) {
       return NextResponse.json({ error: 'Apuesta no encontrada' }, { status: 404 })
+    }
+
+    // Verificar que la operación pertenece al usuario
+    if (bet.operation.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     // Si la apuesta ya tenía resultado, no actualizar el saldo del exchange otra vez
@@ -79,11 +91,11 @@ export async function PATCH(
         exchangeChange = layStake * (1 - COMMISSION)
       }
 
-      // Obtener settings actual y actualizar
-      const settings = await prisma.settings.findUnique({ where: { id: 'global' } })
+      // Obtener settings del usuario actual y actualizar
+      const settings = await prisma.settings.findFirst({ where: { userId: user.id } })
       if (settings) {
         await prisma.settings.update({
-          where: { id: 'global' },
+          where: { id: settings.id },
           data: {
             exchangeBalance: settings.exchangeBalance + exchangeChange
           }

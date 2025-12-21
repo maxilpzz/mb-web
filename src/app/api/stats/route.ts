@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener estadísticas para gráficos
 export async function GET(request: Request) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'monthly' // monthly, yearly, total
 
-    // Obtener todas las operaciones completadas con sus apuestas
+    // Obtener todas las operaciones completadas con sus apuestas (filtradas por userId)
     const operations = await prisma.operation.findMany({
       where: {
+        userId: user.id,
         status: 'completed'
       },
       include: {
@@ -19,8 +26,9 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'asc' }
     })
 
-    // Obtener todas las personas con sus operaciones
+    // Obtener todas las personas con sus operaciones (filtradas por userId)
     const persons = await prisma.person.findMany({
+      where: { userId: user.id },
       include: {
         operations: {
           include: {
@@ -109,7 +117,7 @@ export async function GET(request: Request) {
       p.operations.some(op => op.status === 'completed')
     ).length
 
-    // Calcular comisiones pagadas (de todas las personas)
+    // Calcular comisiones pagadas (de todas las personas del usuario)
     const totalCommissionsPaid = persons.reduce((sum, p) => sum + p.commissionPaid, 0)
 
     // Beneficio neto = beneficio bruto - comisiones pagadas

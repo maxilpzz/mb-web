@@ -8,16 +8,23 @@ import {
   calculateQualifyingProfit,
   calculateFreeBetProfit
 } from '@/lib/calculations'
+import { getCurrentUser } from '@/lib/supabase/server'
 
-// POST: Recalcular todas las apuestas con la fórmula correcta
+// POST: Recalcular todas las apuestas del usuario con la fórmula correcta
 export async function POST() {
   try {
-    // Obtener todas las apuestas con cuotas (no manuales)
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Obtener todas las apuestas del usuario con cuotas (no manuales)
     const bets = await prisma.bet.findMany({
       where: {
         AND: [
           { oddsBack: { gt: 0 } },
-          { oddsLay: { gt: 0 } }
+          { oddsLay: { gt: 0 } },
+          { operation: { userId: user.id } }
         ]
       }
     })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 // POST: Añadir una apuesta a una operación existente
 export async function POST(
@@ -8,6 +9,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
     const { betType, betNumber, stake, oddsBack, oddsLay, eventName, eventDate } = body
@@ -28,6 +34,11 @@ export async function POST(
 
     if (!operation) {
       return NextResponse.json({ error: 'Operación no encontrada' }, { status: 404 })
+    }
+
+    // Verificar que la operación pertenece al usuario
+    if (operation.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     // Calcular el número de apuesta si no se proporciona
