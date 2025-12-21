@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { calculateOwes } from '@/lib/calculations'
 
 // GET: Obtener todas las personas con sus saldos
 export async function GET() {
@@ -21,14 +22,30 @@ export async function GET() {
     })
 
     // Calcular saldo de cada persona
-    // Saldo = bizumSent - moneyReturned - commissionPaid
-    // Si es positivo, la persona te debe dinero
-    // Si es negativo, tú le debes dinero
+    // Saldo = dinero que queda en las casas de apuestas - lo que ya devolvió
+    // Se calcula basándose en los resultados de las apuestas
     const personsWithBalance = persons.map(person => {
       const totalBizumSent = person.operations.reduce((sum, op) => sum + op.bizumSent, 0)
       const totalMoneyReturned = person.operations.reduce((sum, op) => sum + op.moneyReturned, 0)
       const totalCommissionPaid = person.operations.reduce((sum, op) => sum + op.commissionPaid, 0)
-      const balance = totalBizumSent - totalMoneyReturned - totalCommissionPaid
+
+      // Calcular lo que realmente te debe basándose en los resultados de las apuestas
+      let totalOwes = 0
+      person.operations.forEach(op => {
+        const owesData = calculateOwes(op.bets.map(bet => ({
+          betType: bet.betType,
+          stake: bet.stake,
+          oddsBack: bet.oddsBack,
+          oddsLay: bet.oddsLay,
+          liability: bet.liability,
+          result: bet.result,
+          actualProfit: bet.actualProfit
+        })))
+        totalOwes += owesData.totalOwes
+      })
+
+      // Balance = lo que te debe (dinero en casas) - lo que ya devolvió
+      const balance = totalOwes - totalMoneyReturned
 
       const totalProfit = person.operations.reduce((sum, op) => {
         return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)
