@@ -34,7 +34,11 @@ export default function LoginPage() {
         return
       }
 
-      console.log('Login exitoso, redirigiendo...')
+      // Sincronizar usuario con nuestra BD
+      const syncRes = await fetch('/api/auth/sync', { method: 'POST' })
+      const syncData = await syncRes.json()
+
+      console.log('Login exitoso, usuario:', syncData)
       window.location.href = '/'
     } catch (err) {
       console.error('Login error:', err)

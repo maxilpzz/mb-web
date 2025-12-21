@@ -168,3 +168,14 @@ model Settings {
 
   @@index([userId])
 }
+
+// Usuarios registrados (para control de acceso)
+model User {
+  id         String   @id @default(cuid())
+  supabaseId String   @unique // ID de Supabase Auth
+  email      String   @unique
+  isAdmin    Boolean  @default(false)
+  isApproved Boolean  @default(false) // Solo pueden entrar si están aprobados
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

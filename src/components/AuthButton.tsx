@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+
+interface UserStatus {
+  isAdmin: boolean
+  isApproved: boolean
+}
 
 export default function AuthButton() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
+  const [userStatus, setUserStatus] = useState<UserStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -18,6 +25,12 @@ export default function AuthButton() {
       setUser(user)
       setLoading(false)
     })
+
+    // Get user status (admin, approved)
+    fetch('/api/auth/sync')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setUserStatus(data))
+      .catch(() => {})
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -46,6 +59,11 @@ export default function AuthButton() {
 
   return (
     <div className="flex items-center gap-3">
+      {userStatus?.isAdmin && (
+        <Link href="/admin" className="btn btn-warning text-sm">
+          Admin
+        </Link>
+      )}
       <span className="text-sm text-gray-400 hidden md:inline">
         {user.email}
       </span>
