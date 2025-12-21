@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { calculateQualifyingProfit, calculateFreeBetProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
 
-const COMMISSION = 0.05 // 5% comisión del exchange
+const COMMISSION = 0.02 // 2% comisión del exchange (Betfair)
 
 // PATCH: Actualizar resultado de apuesta
 export async function PATCH(
@@ -12,11 +12,7 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const { result } = body
-
-    if (!result || !['won', 'lost'].includes(result)) {
-      return NextResponse.json({ error: 'Resultado inválido' }, { status: 400 })
-    }
+    const { result, actualProfit: manualProfit } = body
 
     // Obtener la apuesta actual
     const bet = await prisma.bet.findUnique({
@@ -30,20 +26,36 @@ export async function PATCH(
     // Si la apuesta ya tenía resultado, no actualizar el saldo del exchange otra vez
     const alreadyResolved = bet.result !== null
 
-    // Calcular el beneficio real
-    const layStake = bet.betType === 'qualifying'
-      ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
-      : calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+    // Detectar si es una apuesta manual (sin cuotas de lay)
+    const isManualBet = bet.oddsBack === 0 || bet.oddsLay === 0
 
-    const actualProfit = bet.betType === 'qualifying'
-      ? calculateQualifyingProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
-      : calculateFreeBetProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
+    let actualProfit: number
+    let finalResult: 'won' | 'lost'
+
+    if (isManualBet && manualProfit !== undefined) {
+      // Apuesta manual: el profit se pasa directamente
+      actualProfit = manualProfit
+      // Si ganó algo, "won" para que se muestre verde, si no "lost"
+      finalResult = manualProfit > 0 ? 'won' : 'lost'
+    } else if (result && ['won', 'lost'].includes(result)) {
+      // Apuesta con lay: calcular profit basándose en el resultado
+      const layStake = bet.betType === 'qualifying'
+        ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
+        : calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+
+      actualProfit = bet.betType === 'qualifying'
+        ? calculateQualifyingProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
+        : calculateFreeBetProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
+      finalResult = result as 'won' | 'lost'
+    } else {
+      return NextResponse.json({ error: 'Resultado o profit requerido' }, { status: 400 })
+    }
 
     // Actualizar la apuesta
     const updatedBet = await prisma.bet.update({
       where: { id },
       data: {
-        result,
+        result: finalResult,
         actualProfit
       },
       include: {
@@ -51,11 +63,15 @@ export async function PATCH(
       }
     })
 
-    // Actualizar saldo del exchange automáticamente (solo si no estaba ya resuelto)
-    if (!alreadyResolved) {
+    // Actualizar saldo del exchange automáticamente (solo si no estaba ya resuelto y NO es manual)
+    if (!alreadyResolved && !isManualBet) {
+      const layStake = bet.betType === 'qualifying'
+        ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
+        : calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+
       let exchangeChange = 0
 
-      if (result === 'won') {
+      if (finalResult === 'won') {
         // Ganó en la casa: perdiste la liability en el exchange
         exchangeChange = -bet.liability
       } else {

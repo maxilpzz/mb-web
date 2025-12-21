@@ -1,6 +1,6 @@
 // Cálculos de Matched Betting
 
-const COMMISSION = 0.05 // 5% comisión del exchange (Betfair)
+const COMMISSION = 0.02 // 2% comisión del exchange (Betfair)
 
 // Calcular stake de lay para qualifying bet (retener dinero)
 export function calculateLayStakeQualifying(backStake: number, backOdds: number, layOdds: number): number {

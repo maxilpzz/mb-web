@@ -29,8 +29,13 @@ export async function GET(
 
     // Calcular totales
     const totalProfit = operation.bets.reduce((sum, bet) => sum + (bet.actualProfit || 0), 0)
-    const totalExpectedProfit = operation.bets.reduce((sum, bet) => sum + bet.expectedProfit, 0)
-    const totalLiability = operation.bets.reduce((sum, bet) => sum + bet.liability, 0)
+    const totalExpectedProfit = operation.bets
+      .filter(bet => bet.result === null)
+      .reduce((sum, bet) => sum + bet.expectedProfit, 0)
+    // Solo contar liability de apuestas PENDIENTES (sin resultado)
+    const totalLiability = operation.bets
+      .filter(bet => bet.result === null)
+      .reduce((sum, bet) => sum + bet.liability, 0)
     const pendingBets = operation.bets.filter(bet => bet.result === null).length
     const totalDeposited = operation.deposits.reduce((sum, dep) => sum + dep.amount, 0)
 

@@ -35,16 +35,16 @@ const bookmakers = [
     minOddsQualifying: 2.0,
     bonusPercentage: 100,
     maxBonus: 200,
-    numFreebets: 1,
-    freebetValue: null,
+    numFreebets: 5, // 5 freebets de 40€
+    freebetValue: 40,
     minOddsFreebet: null,
     maxOddsFreebet: null,
-    sameEvent: true,
+    sameEvent: true, // Se pueden usar en el mismo evento
     daysToDeposit: null,
     daysToQualify: null,
     daysFreebetValid: 15,
     promoCode: 'BIENVENIDA200',
-    notes: null,
+    notes: 'Opción A: Igualar 1 freebet de 200€ (todas al mismo partido). Opción B: 5 freebets de 40€ sin igualar.',
     isActive: true,
   },
   {
