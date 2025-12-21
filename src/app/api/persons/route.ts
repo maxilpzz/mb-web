@@ -44,8 +44,9 @@ export async function GET() {
         totalOwes += owesData.totalOwes
       })
 
-      // Balance = lo que te debe (dinero en casas) - lo que ya devolvió
-      const balance = totalOwes - totalMoneyReturned
+      // Balance = lo que te debe (dinero en casas) - lo que ya devolvió - comisión pagada
+      // La comisión pagada se descuenta porque se "paga" de lo que te debe
+      const balance = totalOwes - totalMoneyReturned - person.commissionPaid
 
       const totalProfit = person.operations.reduce((sum, op) => {
         return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)

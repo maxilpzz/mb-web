@@ -1,37 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-
-// Calcular dinero en la casa para una operación
-function calculateMoneyInBookmaker(bets: Array<{
-  betType: string
-  stake: number
-  oddsBack: number
-  result: string | null
-}>): number {
-  const qualifyingBets = bets.filter(b => b.betType === 'qualifying')
-  const freebetBets = bets.filter(b => b.betType === 'freebet')
-  const resolvedQualifying = qualifyingBets.filter(b => b.result !== null)
-
-  if (resolvedQualifying.length === 0) {
-    return 0 // Sin resultados aún
-  }
-
-  let moneyInBookmaker = 0
-
-  for (const bet of qualifyingBets) {
-    if (bet.result === 'won') {
-      moneyInBookmaker += bet.stake * bet.oddsBack
-    }
-  }
-
-  for (const bet of freebetBets) {
-    if (bet.result === 'won') {
-      moneyInBookmaker += bet.stake * (bet.oddsBack - 1)
-    }
-  }
-
-  return moneyInBookmaker
-}
+import { calculateOwes } from '@/lib/calculations'
 
 // GET: Obtener detalle de una persona con sus operaciones
 export async function GET(
@@ -59,9 +28,19 @@ export async function GET(
       return NextResponse.json({ error: 'Persona no encontrada' }, { status: 404 })
     }
 
-    // Calcular totales
+    // Calcular totales usando calculateOwes para manejar apuestas manuales correctamente
     const operationsWithTotals = person.operations.map(op => {
-      const moneyInBookmaker = calculateMoneyInBookmaker(op.bets)
+      const owesData = calculateOwes(op.bets.map(bet => ({
+        betType: bet.betType,
+        stake: bet.stake,
+        oddsBack: bet.oddsBack,
+        oddsLay: bet.oddsLay,
+        liability: bet.liability,
+        result: bet.result,
+        actualProfit: bet.actualProfit
+      })))
+
+      const moneyInBookmaker = owesData.totalOwes
       const remainingDebt = Math.max(0, moneyInBookmaker - op.moneyReturned)
       const totalProfit = op.bets.reduce((sum, bet) => sum + (bet.actualProfit || 0), 0)
       const pendingBets = op.bets.filter(bet => bet.result === null).length
@@ -76,7 +55,9 @@ export async function GET(
     })
 
     // Calcular totales globales de la persona
-    const totalDebt = operationsWithTotals.reduce((sum, op) => sum + op.remainingDebt, 0)
+    // Restar commissionPaid porque se "paga" de lo que te debe
+    const totalDebtBeforeCommission = operationsWithTotals.reduce((sum, op) => sum + op.remainingDebt, 0)
+    const totalDebt = Math.max(0, totalDebtBeforeCommission - person.commissionPaid)
     const totalProfit = operationsWithTotals.reduce((sum, op) => sum + op.totalProfit, 0)
     const totalBizumSent = person.operations.reduce((sum, op) => sum + op.bizumSent, 0)
     const totalMoneyReturned = person.operations.reduce((sum, op) => sum + op.moneyReturned, 0)
@@ -88,6 +69,7 @@ export async function GET(
       operations: operationsWithTotals,
       totals: {
         totalDebt,
+        totalDebtBeforeCommission, // Antes de restar comisión
         totalProfit,
         totalBizumSent,
         totalMoneyReturned,

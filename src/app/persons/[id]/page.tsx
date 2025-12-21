@@ -34,6 +34,7 @@ interface Person {
   operations: Operation[]
   totals: {
     totalDebt: number
+    totalDebtBeforeCommission: number
     totalProfit: number
     totalBizumSent: number
     totalMoneyReturned: number
@@ -166,10 +167,24 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         {/* Resumen general */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="card">
-            <p className="text-sm text-gray-400">Te debe (total)</p>
+            <p className="text-sm text-gray-400">Dinero en casas</p>
+            <p className="text-2xl font-bold text-yellow-400">
+              {formatMoney(person.totals.totalDebtBeforeCommission)}
+            </p>
+            {person.commissionPaid > 0 && (
+              <p className="text-xs text-purple-400 mt-1">
+                - {formatMoney(person.commissionPaid)} comisión
+              </p>
+            )}
+          </div>
+          <div className="card">
+            <p className="text-sm text-gray-400">Te debe</p>
             <p className={`text-2xl font-bold ${person.totals.totalDebt > 0 ? 'text-red-400' : 'text-green-400'}`}>
               {formatMoney(person.totals.totalDebt)}
             </p>
+            {person.totals.totalDebt === 0 && person.totals.totalDebtBeforeCommission > 0 && (
+              <p className="text-xs text-green-400 mt-1">Liquidado</p>
+            )}
           </div>
           <div className="card">
             <p className="text-sm text-gray-400">Beneficio generado</p>
@@ -184,10 +199,6 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
               <span className="text-sm text-gray-400 ml-1">completadas</span>
             </p>
           </div>
-          <div className="card">
-            <p className="text-sm text-gray-400">Bizum enviado</p>
-            <p className="text-2xl font-bold">{formatMoney(person.totals.totalBizumSent)}</p>
-          </div>
         </div>
 
         {/* Comisión */}
@@ -198,26 +209,32 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
               <p className="text-3xl font-bold text-purple-400">{formatMoney(person.commission)}</p>
               {person.commissionPaid > 0 && (
                 <p className="text-sm text-green-500 mt-1">
-                  ✓ Pagado: {formatMoney(person.commissionPaid)}
+                  ✓ Pagada de la deuda: {formatMoney(person.commissionPaid)}
                 </p>
               )}
-              {commissionRemaining > 0 && (
-                <p className="text-sm text-yellow-500 mt-1">
-                  Pendiente: {formatMoney(commissionRemaining)}
+              {commissionRemaining > 0 && person.totals.totalDebtBeforeCommission > 0 && (
+                <p className="text-sm text-gray-400 mt-1">
+                  Tras pagar comisión, te deberá: {formatMoney(Math.max(0, person.totals.totalDebtBeforeCommission - person.commission))}
                 </p>
               )}
             </div>
-            <div className="text-right">
-              {commissionRemaining > 0 ? (
+            <div className="text-right space-y-2">
+              {commissionRemaining > 0 && person.totals.totalDebtBeforeCommission > 0 ? (
                 <button
                   onClick={handlePayCommission}
                   className="btn btn-primary"
                 >
-                  Pagar {formatMoney(commissionRemaining)}
+                  Pagar comisión de la deuda
                 </button>
-              ) : person.commission > 0 ? (
+              ) : person.commission > 0 && person.commissionPaid >= person.commission ? (
                 <span className="badge badge-completed text-lg px-4 py-2">✓ Pagada</span>
               ) : null}
+              <button
+                onClick={() => setEditing(true)}
+                className="btn btn-secondary text-sm block w-full"
+              >
+                Cambiar comisión
+              </button>
             </div>
           </div>
         </div>
