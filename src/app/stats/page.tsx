@@ -22,7 +22,9 @@ interface StatsData {
   cumulativeProfit: Array<{ period: string; profit: number; cumulative: number }>
   personsCompleted: Array<{ period: string; count: number }>
   totals: {
-    profit: number
+    grossProfit: number
+    netProfit: number
+    commissionsPaid: number
     operations: number
     persons: number
   }
@@ -103,20 +105,37 @@ export default function StatsPage() {
         ) : (
           <>
             {/* Totals Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
               <div className="card">
-                <p className="text-sm text-gray-400">Beneficio Total</p>
-                <p className={`text-3xl font-bold ${data.totals.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {formatMoney(data.totals.profit)}
+                <p className="text-sm text-gray-400">Beneficio Bruto</p>
+                <p className={`text-2xl font-bold ${data.totals.grossProfit >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                  {formatMoney(data.totals.grossProfit)}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Ganancias de apuestas</p>
               </div>
               <div className="card">
-                <p className="text-sm text-gray-400">Operaciones Completadas</p>
-                <p className="text-3xl font-bold">{data.totals.operations}</p>
+                <p className="text-sm text-gray-400">Comisiones Pagadas</p>
+                <p className="text-2xl font-bold text-purple-400">
+                  -{formatMoney(data.totals.commissionsPaid)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Pagado a personas</p>
+              </div>
+              <div className="card border-2 border-green-600">
+                <p className="text-sm text-gray-400">Beneficio Neto</p>
+                <p className={`text-2xl font-bold ${data.totals.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {formatMoney(data.totals.netProfit)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Tu ganancia real</p>
               </div>
               <div className="card">
-                <p className="text-sm text-gray-400">Personas Completadas</p>
-                <p className="text-3xl font-bold">{data.totals.persons}</p>
+                <p className="text-sm text-gray-400">Operaciones</p>
+                <p className="text-2xl font-bold">{data.totals.operations}</p>
+                <p className="text-xs text-gray-500 mt-1">Completadas</p>
+              </div>
+              <div className="card">
+                <p className="text-sm text-gray-400">Personas</p>
+                <p className="text-2xl font-bold">{data.totals.persons}</p>
+                <p className="text-xs text-gray-500 mt-1">Con operaciones</p>
               </div>
             </div>
 
@@ -124,9 +143,12 @@ export default function StatsPage() {
             <div className="space-y-8">
               {/* Profit by Period */}
               <div className="card">
-                <h2 className="text-lg font-semibold mb-4">
-                  Beneficio por {period === 'monthly' ? 'Mes' : period === 'yearly' ? 'Año' : 'Total'}
+                <h2 className="text-lg font-semibold mb-1">
+                  Beneficio Bruto por {period === 'monthly' ? 'Mes' : period === 'yearly' ? 'Año' : 'Total'}
                 </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Ganancias de las apuestas (sin descontar comisiones)
+                </p>
                 {data.profitByPeriod.length === 0 ? (
                   <p className="text-gray-400 text-center py-8">No hay datos para mostrar</p>
                 ) : (
@@ -167,7 +189,10 @@ export default function StatsPage() {
 
               {/* Cumulative Profit */}
               <div className="card">
-                <h2 className="text-lg font-semibold mb-4">Beneficio Acumulado</h2>
+                <h2 className="text-lg font-semibold mb-1">Beneficio Bruto Acumulado</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Total acumulado de ganancias de apuestas a lo largo del tiempo
+                </p>
                 {data.cumulativeProfit.length === 0 ? (
                   <p className="text-gray-400 text-center py-8">No hay datos para mostrar</p>
                 ) : (
@@ -216,9 +241,12 @@ export default function StatsPage() {
 
               {/* Persons Completed */}
               <div className="card">
-                <h2 className="text-lg font-semibold mb-4">
+                <h2 className="text-lg font-semibold mb-1">
                   Personas Completadas por {period === 'monthly' ? 'Mes' : period === 'yearly' ? 'Año' : 'Total'}
                 </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Número de personas que completaron su primera operación
+                </p>
                 {data.personsCompleted.length === 0 ? (
                   <p className="text-gray-400 text-center py-8">No hay datos para mostrar</p>
                 ) : (

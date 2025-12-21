@@ -103,18 +103,26 @@ export async function GET(request: Request) {
     }))
 
     // Estadísticas totales
-    const totalProfit = operationsWithProfit.reduce((sum, op) => sum + op.profit, 0)
+    const totalGrossProfit = operationsWithProfit.reduce((sum, op) => sum + op.profit, 0)
     const totalOperations = operations.length
     const totalPersons = persons.filter(p =>
       p.operations.some(op => op.status === 'completed')
     ).length
+
+    // Calcular comisiones pagadas (de todas las personas)
+    const totalCommissionsPaid = persons.reduce((sum, p) => sum + p.commissionPaid, 0)
+
+    // Beneficio neto = beneficio bruto - comisiones pagadas
+    const totalNetProfit = totalGrossProfit - totalCommissionsPaid
 
     return NextResponse.json({
       profitByPeriod: profitData,
       cumulativeProfit,
       personsCompleted: personsData,
       totals: {
-        profit: Math.round(totalProfit * 100) / 100,
+        grossProfit: Math.round(totalGrossProfit * 100) / 100,
+        netProfit: Math.round(totalNetProfit * 100) / 100,
+        commissionsPaid: Math.round(totalCommissionsPaid * 100) / 100,
         operations: totalOperations,
         persons: totalPersons
       }
