@@ -12,9 +12,13 @@ export async function POST(
     const body = await request.json()
     const { betType, betNumber, stake, oddsBack, oddsLay, eventName, eventDate } = body
 
-    if (!betType || !stake || !oddsBack || !oddsLay) {
+    if (!betType || stake === undefined || stake === null) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
+
+    // Las cuotas pueden ser 0 para apuestas manuales (sin igualar)
+    const finalOddsBack = oddsBack ?? 0
+    const finalOddsLay = oddsLay ?? 0
 
     // Verificar que la operación existe
     const operation = await prisma.operation.findUnique({
@@ -30,12 +34,18 @@ export async function POST(
     const existingBetsOfType = operation.bets.filter(b => b.betType === betType)
     const newBetNumber = betNumber || existingBetsOfType.length + 1
 
-    // Calcular liability y beneficio esperado
-    const layStake = betType === 'qualifying'
-      ? calculateLayStakeQualifying(stake, oddsBack, oddsLay)
-      : calculateLayStakeFreeBet(stake, oddsBack, oddsLay)
-    const liability = calculateLiability(layStake, oddsLay)
-    const expectedProfit = calculateExpectedProfit(stake, oddsBack, oddsLay, betType as 'qualifying' | 'freebet')
+    // Calcular liability y beneficio esperado (solo si hay cuotas)
+    let layStake = 0
+    let liability = 0
+    let expectedProfit = 0
+
+    if (finalOddsBack > 0 && finalOddsLay > 0) {
+      layStake = betType === 'qualifying'
+        ? calculateLayStakeQualifying(stake, finalOddsBack, finalOddsLay)
+        : calculateLayStakeFreeBet(stake, finalOddsBack, finalOddsLay)
+      liability = calculateLiability(layStake, finalOddsLay)
+      expectedProfit = calculateExpectedProfit(stake, finalOddsBack, finalOddsLay, betType as 'qualifying' | 'freebet')
+    }
 
     // Crear la apuesta
     const bet = await prisma.bet.create({
@@ -44,8 +54,8 @@ export async function POST(
         betType,
         betNumber: newBetNumber,
         stake,
-        oddsBack,
-        oddsLay,
+        oddsBack: finalOddsBack,
+        oddsLay: finalOddsLay,
         liability,
         expectedProfit,
         eventName,
