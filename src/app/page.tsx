@@ -9,6 +9,8 @@ interface DashboardData {
   completedOperations: number
   pendingOperations: number
   totalProfit: number
+  profitInExchange: number
+  profitInBookmaker: number
   totalBizumSent: number
   totalMoneyReturned: number
   totalCommissionPaid: number
@@ -122,6 +124,18 @@ export default function Home() {
           <p className={`text-2xl font-bold ${(data?.totalProfit || 0) >= 0 ? 'positive' : 'negative'}`}>
             {formatMoney(data?.totalProfit || 0)}
           </p>
+          {(data?.totalProfit || 0) > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-700 text-xs">
+              <div className="flex justify-between text-green-400">
+                <span>Exchange:</span>
+                <span>{formatMoney(data?.profitInExchange || 0)} ({((data?.profitInExchange || 0) / (data?.totalProfit || 1) * 100).toFixed(0)}%)</span>
+              </div>
+              <div className="flex justify-between text-red-400">
+                <span>Casas:</span>
+                <span>{formatMoney(data?.profitInBookmaker || 0)} ({((data?.profitInBookmaker || 0) / (data?.totalProfit || 1) * 100).toFixed(0)}%)</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="card">
           <p className="text-sm text-gray-400">Operaciones</p>

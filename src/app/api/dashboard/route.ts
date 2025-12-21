@@ -31,6 +31,22 @@ export async function GET() {
       return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)
     }, 0)
 
+    // Calcular beneficio por ubicación (exchange vs casa)
+    let profitInExchange = 0
+    let profitInBookmaker = 0
+
+    operations.forEach(op => {
+      op.bets.forEach(bet => {
+        if (bet.result === 'lost' && bet.actualProfit) {
+          // Perdió en la casa = ganaste en exchange
+          profitInExchange += bet.actualProfit
+        } else if (bet.result === 'won' && bet.actualProfit) {
+          // Ganó en la casa = beneficio quedó en la casa
+          profitInBookmaker += bet.actualProfit
+        }
+      })
+    })
+
     const totalBizumSent = operations.reduce((sum, op) => sum + op.bizumSent, 0)
     const totalMoneyReturned = operations.reduce((sum, op) => sum + op.moneyReturned, 0)
     const totalCommissionPaid = operations.reduce((sum, op) => sum + op.commissionPaid, 0)
@@ -147,6 +163,8 @@ export async function GET() {
       completedOperations,
       pendingOperations,
       totalProfit,
+      profitInExchange,
+      profitInBookmaker,
       totalBizumSent,
       totalMoneyReturned,
       totalCommissionPaid,
