@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
+import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet, calculateLayStakeRefund } from '@/lib/calculations'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 // POST: Añadir una apuesta a una operación existente
@@ -26,10 +26,10 @@ export async function POST(
     const finalOddsBack = oddsBack ?? 0
     const finalOddsLay = oddsLay ?? 0
 
-    // Verificar que la operación existe
+    // Verificar que la operación existe (incluyendo bookmaker para saber el tipo de bono)
     const operation = await prisma.operation.findUnique({
       where: { id },
-      include: { bets: true }
+      include: { bets: true, bookmaker: true }
     })
 
     if (!operation) {
@@ -51,9 +51,16 @@ export async function POST(
     let expectedProfit = 0
 
     if (finalOddsBack > 0 && finalOddsLay > 0) {
-      layStake = betType === 'qualifying'
-        ? calculateLayStakeQualifying(stake, finalOddsBack, finalOddsLay)
-        : calculateLayStakeFreeBet(stake, finalOddsBack, finalOddsLay)
+      if (betType === 'qualifying' && operation.bookmaker.bonusType === 'only_if_lost') {
+        // Modo Reembolso: usar fórmula especial para casas tipo "solo si pierdes"
+        layStake = calculateLayStakeRefund(stake, finalOddsBack, finalOddsLay, operation.bookmaker.freebetRetention)
+      } else if (betType === 'qualifying') {
+        // Qualifying normal
+        layStake = calculateLayStakeQualifying(stake, finalOddsBack, finalOddsLay)
+      } else {
+        // Freebet (SNR)
+        layStake = calculateLayStakeFreeBet(stake, finalOddsBack, finalOddsLay)
+      }
       liability = calculateLiability(layStake, finalOddsLay)
       expectedProfit = calculateExpectedProfit(stake, finalOddsBack, finalOddsLay, betType as 'qualifying' | 'freebet')
     }

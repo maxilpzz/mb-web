@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
+import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet, calculateLayStakeRefund } from '@/lib/calculations'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener todas las operaciones
@@ -127,9 +127,19 @@ export async function POST(request: Request) {
             eventName?: string;
             eventDate?: string
           }) => {
-            const layStake = bet.betType === 'qualifying'
-              ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
-              : calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+            let layStake: number
+
+            if (bet.betType === 'qualifying' && bookmaker.bonusType === 'only_if_lost') {
+              // Modo Reembolso: usar fórmula especial para casas tipo "solo si pierdes"
+              layStake = calculateLayStakeRefund(bet.stake, bet.oddsBack, bet.oddsLay, bookmaker.freebetRetention)
+            } else if (bet.betType === 'qualifying') {
+              // Qualifying normal
+              layStake = calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
+            } else {
+              // Freebet (SNR)
+              layStake = calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+            }
+
             const liability = calculateLiability(layStake, bet.oddsLay)
             const expectedProfit = calculateExpectedProfit(bet.stake, bet.oddsBack, bet.oddsLay, bet.betType as 'qualifying' | 'freebet')
 
