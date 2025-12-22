@@ -103,6 +103,7 @@ const bookmakers = [
     maxBonus: 150,
     numFreebets: 1,
     freebetValue: null,
+    freebetRetention: 0.80, // 80% retención típica
     minOddsFreebet: null,
     maxOddsFreebet: null,
     sameEvent: true,
@@ -110,7 +111,7 @@ const bookmakers = [
     daysToQualify: 30,
     daysFreebetValid: null,
     promoCode: 'GOAT',
-    notes: '¡TODO desde MISMO DISPOSITIVO! (registro, depósito, apuestas). Bono = 150% de apuestas PERDIDAS.',
+    notes: '¡TODO desde MISMO DISPOSITIVO! (registro, depósito, apuestas). Bono = 150% de apuestas PERDIDAS. Usar modo Reembolso.',
     isActive: true,
   },
   {
@@ -125,6 +126,7 @@ const bookmakers = [
     maxBonus: 200,
     numFreebets: 1,
     freebetValue: null,
+    freebetRetention: 0.75, // 75% retención típica en Marca Apuestas
     minOddsFreebet: null,
     maxOddsFreebet: 10.0,
     sameEvent: true,
@@ -132,7 +134,7 @@ const bookmakers = [
     daysToQualify: 7,
     daysFreebetValid: 7,
     promoCode: 'BONO',
-    notes: 'Activar dentro de 48h tras depósito. Bono SOLO SI PIERDES la 1ª apuesta.',
+    notes: 'Activar dentro de 48h tras depósito. Bono SOLO SI PIERDES la 1ª apuesta. Usar modo Reembolso en calculadora.',
     isActive: true,
   },
 ]

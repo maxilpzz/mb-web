@@ -23,6 +23,7 @@ interface Bookmaker {
   maxBonus: number
   numFreebets: number
   freebetValue: number | null
+  freebetRetention: number
   minOddsFreebet: number | null
   maxOddsFreebet: number | null
   sameEvent: boolean
@@ -216,12 +217,41 @@ function NewOperationContent() {
     const ol = parseFloat(oddsLay) || 0
     if (s === 0 || ob === 0 || ol === 0) return 0
 
-    const commission = 0.05
-    const layStake = type === 'qualifying'
-      ? (s * ob) / (ol - commission)
-      : (s * (ob - 1)) / (ol - commission)
+    const commission = 0.02 // 2% comisión Betfair
+    let layStake: number
+
+    if (type === 'qualifying' && selectedBookmaker?.bonusType === 'only_if_lost') {
+      // Modo Reembolso: fórmula especial para casas tipo "solo si pierdes"
+      const retention = selectedBookmaker.freebetRetention || 0.75
+      layStake = (s * (ob - retention)) / (ol - commission)
+    } else if (type === 'qualifying') {
+      // Qualifying normal
+      layStake = (s * ob) / (ol - commission)
+    } else {
+      // Freebet (SNR)
+      layStake = (s * (ob - 1)) / (ol - commission)
+    }
 
     return layStake * (ol - 1)
+  }
+
+  // Calcular lay stake para mostrar al usuario
+  const calculateLayStake = (stake: string, oddsBack: string, oddsLay: string, type: 'qualifying' | 'freebet') => {
+    const s = parseFloat(stake) || 0
+    const ob = parseFloat(oddsBack) || 0
+    const ol = parseFloat(oddsLay) || 0
+    if (s === 0 || ob === 0 || ol === 0) return 0
+
+    const commission = 0.02
+
+    if (type === 'qualifying' && selectedBookmaker?.bonusType === 'only_if_lost') {
+      const retention = selectedBookmaker.freebetRetention || 0.75
+      return (s * (ob - retention)) / (ol - commission)
+    } else if (type === 'qualifying') {
+      return (s * ob) / (ol - commission)
+    } else {
+      return (s * (ob - 1)) / (ol - commission)
+    }
   }
 
   const totalQualifyingLiability = qualifyingBets.reduce((sum, bet) =>
@@ -373,9 +403,16 @@ function NewOperationContent() {
           {/* Qualifying Bets */}
           {qualifyingBets.length > 0 && (
             <div className="card">
-              <h2 className="text-lg font-semibold mb-4">
-                Apuesta(s) Qualifying ({qualifyingBets.length})
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">
+                  Apuesta(s) Qualifying ({qualifyingBets.length})
+                </h2>
+                {selectedBookmaker?.bonusType === 'only_if_lost' && (
+                  <span className="px-2 py-1 bg-orange-600 text-xs rounded-full">
+                    Modo Reembolso ({(selectedBookmaker.freebetRetention * 100).toFixed(0)}%)
+                  </span>
+                )}
+              </div>
               {qualifyingBets.map((bet, index) => (
                 <div key={index} className="mb-4 p-4 bg-gray-700 rounded-lg">
                   {qualifyingBets.length > 1 && (
@@ -423,10 +460,15 @@ function NewOperationContent() {
                     placeholder="Evento (opcional)"
                     className="input mt-3"
                   />
-                  {parseFloat(bet.oddsLay) > 0 && (
-                    <p className="mt-2 text-yellow-400 text-sm">
-                      Liability: {formatMoney(calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'qualifying'))}
-                    </p>
+                  {parseFloat(bet.oddsLay) > 0 && parseFloat(bet.oddsBack) > 0 && (
+                    <div className="mt-2 text-sm space-y-1">
+                      <p className="text-blue-400">
+                        Lay Stake: {formatMoney(calculateLayStake(bet.stake, bet.oddsBack, bet.oddsLay, 'qualifying'))}
+                      </p>
+                      <p className="text-yellow-400">
+                        Liability: {formatMoney(calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'qualifying'))}
+                      </p>
+                    </div>
                   )}
                 </div>
               ))}
@@ -489,10 +531,15 @@ function NewOperationContent() {
                     placeholder={!selectedBookmaker?.sameEvent ? 'Evento (DISTINTO requerido)' : 'Evento (opcional)'}
                     className="input mt-3"
                   />
-                  {parseFloat(bet.oddsLay) > 0 && (
-                    <p className="mt-2 text-yellow-400 text-sm">
-                      Liability: {formatMoney(calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'freebet'))}
-                    </p>
+                  {parseFloat(bet.oddsLay) > 0 && parseFloat(bet.oddsBack) > 0 && (
+                    <div className="mt-2 text-sm space-y-1">
+                      <p className="text-blue-400">
+                        Lay Stake: {formatMoney(calculateLayStake(bet.stake, bet.oddsBack, bet.oddsLay, 'freebet'))}
+                      </p>
+                      <p className="text-yellow-400">
+                        Liability: {formatMoney(calculateLiability(bet.stake, bet.oddsBack, bet.oddsLay, 'freebet'))}
+                      </p>
+                    </div>
                   )}
                 </div>
               ))}

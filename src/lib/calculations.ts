@@ -12,6 +12,42 @@ export function calculateLayStakeFreeBet(freeBetStake: number, backOdds: number,
   return (freeBetStake * (backOdds - 1)) / (layOdds - COMMISSION)
 }
 
+// Calcular stake de lay para apuesta de reembolso (solo si pierdes recibes freebet)
+// La retención es el % del valor del freebet que esperas extraer (típicamente 0.75)
+export function calculateLayStakeRefund(
+  backStake: number,
+  backOdds: number,
+  layOdds: number,
+  retention: number = 0.75
+): number {
+  // Fórmula: layStake = backStake × (backOdds - retención) / (layOdds - comisión)
+  // Esto equilibra: si ganas en casa = si pierdes en casa + valor esperado del freebet
+  return (backStake * (backOdds - retention)) / (layOdds - COMMISSION)
+}
+
+// Calcular beneficio de apuesta de reembolso
+export function calculateRefundProfit(
+  backStake: number,
+  backOdds: number,
+  layStake: number,
+  layOdds: number,
+  result: 'won' | 'lost',
+  retention: number = 0.75
+): number {
+  if (result === 'won') {
+    // Ganó en la casa: NO recibes freebet, pero ganas en la casa
+    const backWinnings = backStake * (backOdds - 1)
+    const layLoss = layStake * (layOdds - 1)
+    return backWinnings - layLoss
+  } else {
+    // Perdió en la casa: pierdes stake, ganas en exchange, Y recibes freebet
+    const backLoss = backStake
+    const layWinnings = layStake * (1 - COMMISSION)
+    const freebetValue = backStake * retention // Valor esperado del freebet
+    return layWinnings - backLoss + freebetValue
+  }
+}
+
 // Calcular liability (lo que arriesgas en el exchange)
 export function calculateLiability(layStake: number, layOdds: number): number {
   return layStake * (layOdds - 1)

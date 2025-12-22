@@ -51,6 +51,7 @@ model Bookmaker {
   maxBonus        Float    // Máximo del bono en euros
   numFreebets     Int      @default(1) // Número de freebets (Retabet: 6)
   freebetValue    Float?   // Valor de cada freebet si son fijas (Retabet: 25€)
+  freebetRetention Float   @default(0.80) // Retención esperada del freebet (0.75-0.80 típico)
   minOddsFreebet  Float?   // Cuota mínima freebet
   maxOddsFreebet  Float?   // Cuota máxima freebet (Retabet: 3.50)
   sameEvent       Boolean  @default(true) // Pueden ser al mismo evento
