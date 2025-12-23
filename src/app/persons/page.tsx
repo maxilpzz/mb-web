@@ -140,11 +140,11 @@ export default function PersonsPage() {
               placeholder="Buscar por nombre..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input w-full pl-10"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors duration-200 pl-10"
             />
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
