@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser } from '@/lib/supabase/server'
 
+const COMMISSION = 0.02 // 2% comisión del exchange (Betfair)
+
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser()
@@ -52,18 +54,21 @@ export async function GET(request: Request) {
     const allBets = operations.flatMap(op => op.bets)
 
     for (const bet of allBets) {
+      // Detectar si es apuesta manual (sin igualar en exchange)
+      const isManualBet = bet.oddsBack === 0 || bet.oddsLay === 0
+
       if (bet.result === 'won') {
         // Ganó en casa = perdimos en exchange (liability)
-        exchangeLosses += bet.liability
+        if (!isManualBet) {
+          exchangeLosses += bet.liability
+        }
       } else if (bet.result === 'lost') {
         // Perdió en casa = ganamos en exchange
-        // Ganancia = stake * (oddsBack - 1) para qualifying
-        // Para freebet, ganancia es diferente (solo el lay stake - comisiones)
-        if (bet.betType === 'qualifying') {
-          exchangeWins += bet.stake * (bet.oddsBack - 1)
-        } else {
-          // Freebet: ganamos el stake apostado menos la liability
-          exchangeWins += bet.stake - bet.liability
+        if (!isManualBet && bet.oddsLay > 1) {
+          // Fórmula correcta: layStake * (1 - comisión)
+          // donde layStake = liability / (oddsLay - 1)
+          const layStake = bet.liability / (bet.oddsLay - 1)
+          exchangeWins += layStake * (1 - COMMISSION)
         }
       } else {
         // Pendiente
@@ -165,13 +170,16 @@ export async function GET(request: Request) {
       let monthExchangeResult = 0
       for (const op of monthOps) {
         for (const bet of op.bets) {
+          const isManualBet = bet.oddsBack === 0 || bet.oddsLay === 0
+
           if (bet.result === 'won') {
-            monthExchangeResult -= bet.liability
+            if (!isManualBet) {
+              monthExchangeResult -= bet.liability
+            }
           } else if (bet.result === 'lost') {
-            if (bet.betType === 'qualifying') {
-              monthExchangeResult += bet.stake * (bet.oddsBack - 1)
-            } else {
-              monthExchangeResult += bet.stake - bet.liability
+            if (!isManualBet && bet.oddsLay > 1) {
+              const layStake = bet.liability / (bet.oddsLay - 1)
+              monthExchangeResult += layStake * (1 - COMMISSION)
             }
           }
         }
