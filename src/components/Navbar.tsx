@@ -11,9 +11,15 @@ interface UserStatus {
   isApproved: boolean
 }
 
-const navLinks = [
+interface NavLink {
+  href: string
+  label: string
+  showBadge?: boolean
+}
+
+const navLinks: NavLink[] = [
   { href: '/', label: 'Dashboard' },
-  { href: '/live', label: 'En Vivo' },
+  { href: '/live', label: 'En Vivo', showBadge: true },
   { href: '/operations', label: 'Operaciones' },
   { href: '/persons', label: 'Personas' },
   { href: '/stats', label: 'Stats' },
@@ -28,6 +34,20 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [pendingBetsCount, setPendingBetsCount] = useState(0)
+
+  // Fetch pending bets count
+  const fetchPendingBets = async () => {
+    try {
+      const res = await fetch('/api/bets/pending')
+      if (res.ok) {
+        const bets = await res.json()
+        setPendingBetsCount(Array.isArray(bets) ? bets.length : 0)
+      }
+    } catch {
+      // Silently fail
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -50,6 +70,15 @@ export default function Navbar() {
       subscription.unsubscribe()
     }
   }, [])
+
+  // Fetch pending bets on mount and every 30 seconds
+  useEffect(() => {
+    if (user) {
+      fetchPendingBets()
+      const interval = setInterval(fetchPendingBets, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [user])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -97,13 +126,18 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive(link.href)
                     ? 'bg-gray-800 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                 }`}
               >
                 {link.label}
+                {link.showBadge && pendingBetsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white animate-pulse">
+                    {pendingBetsCount}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
@@ -153,13 +187,18 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className={`block px-3 py-2 rounded-lg text-base font-medium transition-colors ${
+                className={`flex items-center justify-between px-3 py-2 rounded-lg text-base font-medium transition-colors ${
                   isActive(link.href)
                     ? 'bg-gray-800 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                 }`}
               >
                 {link.label}
+                {link.showBadge && pendingBetsCount > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                    {pendingBetsCount}
+                  </span>
+                )}
               </Link>
             ))}
 
