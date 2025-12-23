@@ -15,7 +15,9 @@
       "Bash(curl:*)",
       "Bash(npm install:*)",
       "Bash(npm run seed:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ]
   }
 }

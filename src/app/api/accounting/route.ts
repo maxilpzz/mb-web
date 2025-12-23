@@ -16,6 +16,9 @@ export async function GET(request: Request) {
     const startDate = new Date(year, 0, 1) // 1 de enero
     const endDate = new Date(year + 1, 0, 1) // 1 de enero del siguiente año
 
+    console.log('[Accounting API] User:', user.id, 'Year:', year)
+    console.log('[Accounting API] Date range:', startDate, 'to', endDate)
+
     // 1. Obtener todas las operaciones completadas del año
     const operations = await prisma.operation.findMany({
       where: {
@@ -35,6 +38,8 @@ export async function GET(request: Request) {
         bets: true
       }
     })
+
+    console.log('[Accounting API] Found operations:', operations.length)
 
     // 2. Calcular datos del Exchange (Betfair)
     // Cuando result = 'won' (ganó en casa), perdemos en exchange (liability)

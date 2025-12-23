@@ -66,9 +66,13 @@ export default function AccountingPage() {
       if (res.ok) {
         const accountingData = await res.json()
         setData(accountingData)
+      } else {
+        console.error('API Error:', res.status, await res.text())
+        setData(null)
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Fetch Error:', error)
+      setData(null)
     }
     setLoading(false)
   }
@@ -185,7 +189,12 @@ export default function AccountingPage() {
           </div>
         ) : !data ? (
           <div className="flex items-center justify-center py-20">
-            <p className="text-gray-400">No hay datos disponibles</p>
+            <div className="text-center">
+              <p className="text-gray-400 mb-2">Error al cargar datos</p>
+              <button onClick={fetchData} className="btn btn-primary">
+                Reintentar
+              </button>
+            </div>
           </div>
         ) : (
           <div ref={reportRef} className="space-y-8 print:space-y-6">
