@@ -25,26 +25,26 @@ export function calculateLayStakeRefund(
   return (backStake * (backOdds - retention)) / (layOdds - COMMISSION)
 }
 
-// Calcular beneficio de apuesta de reembolso
+// Calcular beneficio de apuesta de reembolso (qualifying en casas only_if_lost)
+// NOTA: Si pierde, el profit NO incluye el valor del freebet - ese se calcula aparte cuando se usa
 export function calculateRefundProfit(
   backStake: number,
   backOdds: number,
   layStake: number,
   layOdds: number,
-  result: 'won' | 'lost',
-  retention: number = 0.75
+  result: 'won' | 'lost'
 ): number {
   if (result === 'won') {
-    // Ganó en la casa: NO recibes freebet, pero ganas en la casa
+    // Ganó en la casa: NO recibes freebet, pero ganas mucho en la casa
     const backWinnings = backStake * (backOdds - 1)
     const layLoss = layStake * (layOdds - 1)
     return backWinnings - layLoss
   } else {
-    // Perdió en la casa: pierdes stake, ganas en exchange, Y recibes freebet
+    // Perdió en la casa: pierdes stake, ganas en exchange
+    // El freebet que recibes se contabiliza cuando lo uses (apuesta separada)
     const backLoss = backStake
     const layWinnings = layStake * (1 - COMMISSION)
-    const freebetValue = backStake * retention // Valor esperado del freebet
-    return layWinnings - backLoss + freebetValue
+    return layWinnings - backLoss
   }
 }
 
@@ -116,6 +116,29 @@ export function calculateExpectedProfit(
   // El beneficio esperado es aproximadamente el mismo gane o pierda (matched betting)
   // Retornamos el promedio (deberían ser casi iguales si las cuotas son cercanas)
   return (profitIfWon + profitIfLost) / 2
+}
+
+// Calcular beneficio esperado para apuesta de reembolso (qualifying en casas only_if_lost)
+// NOTA: No incluye el valor del freebet - los resultados NO están balanceados
+// Si gana: profit alto (+110€), si pierde: profit negativo (-40€) pero recibes freebet
+export function calculateExpectedProfitRefund(
+  stake: number,
+  backOdds: number,
+  layOdds: number,
+  retention: number = 0.75
+): number {
+  const layStake = calculateLayStakeRefund(stake, backOdds, layOdds, retention)
+
+  // Si gana en casa: cobras en casa, pierdes liability, NO recibes freebet
+  const profitIfWon = calculateRefundProfit(stake, backOdds, layStake, layOdds, 'won')
+
+  // Si pierde en casa: pierdes stake, ganas en exchange (sin contar freebet)
+  const profitIfLost = calculateRefundProfit(stake, backOdds, layStake, layOdds, 'lost')
+
+  // Retornamos el profit si PIERDE (el escenario "malo" de la qualifying)
+  // porque el freebet se contabilizará aparte
+  // Esto muestra el "coste" de la qualifying si pierdes
+  return profitIfLost
 }
 
 // Formatear dinero

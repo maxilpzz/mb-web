@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet, calculateLayStakeRefund } from '@/lib/calculations'
+import { calculateLiability, calculateExpectedProfit, calculateExpectedProfitRefund, calculateLayStakeQualifying, calculateLayStakeFreeBet, calculateLayStakeRefund } from '@/lib/calculations'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 // POST: Añadir una apuesta a una operación existente
@@ -62,7 +62,13 @@ export async function POST(
         layStake = calculateLayStakeFreeBet(stake, finalOddsBack, finalOddsLay)
       }
       liability = calculateLiability(layStake, finalOddsLay)
-      expectedProfit = calculateExpectedProfit(stake, finalOddsBack, finalOddsLay, betType as 'qualifying' | 'freebet')
+
+      // Para apuestas qualifying en casas only_if_lost, usar cálculo de reembolso
+      if (betType === 'qualifying' && operation.bookmaker.bonusType === 'only_if_lost') {
+        expectedProfit = calculateExpectedProfitRefund(stake, finalOddsBack, finalOddsLay, operation.bookmaker.freebetRetention)
+      } else {
+        expectedProfit = calculateExpectedProfit(stake, finalOddsBack, finalOddsLay, betType as 'qualifying' | 'freebet')
+      }
     }
 
     // Crear la apuesta

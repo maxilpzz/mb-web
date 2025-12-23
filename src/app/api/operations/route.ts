@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { calculateLiability, calculateExpectedProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet, calculateLayStakeRefund } from '@/lib/calculations'
+import { calculateLiability, calculateExpectedProfit, calculateExpectedProfitRefund, calculateLayStakeQualifying, calculateLayStakeFreeBet, calculateLayStakeRefund } from '@/lib/calculations'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 // GET: Obtener todas las operaciones
@@ -141,7 +141,15 @@ export async function POST(request: Request) {
             }
 
             const liability = calculateLiability(layStake, bet.oddsLay)
-            const expectedProfit = calculateExpectedProfit(bet.stake, bet.oddsBack, bet.oddsLay, bet.betType as 'qualifying' | 'freebet')
+
+            // Para apuestas qualifying en casas only_if_lost, usar cálculo de reembolso
+            // que YA INCLUYE el valor esperado del freebet
+            let expectedProfit: number
+            if (bet.betType === 'qualifying' && bookmaker.bonusType === 'only_if_lost') {
+              expectedProfit = calculateExpectedProfitRefund(bet.stake, bet.oddsBack, bet.oddsLay, bookmaker.freebetRetention)
+            } else {
+              expectedProfit = calculateExpectedProfit(bet.stake, bet.oddsBack, bet.oddsLay, bet.betType as 'qualifying' | 'freebet')
+            }
 
             return {
               betType: bet.betType,

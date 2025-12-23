@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { calculateQualifyingProfit, calculateFreeBetProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet } from '@/lib/calculations'
+import { calculateQualifyingProfit, calculateFreeBetProfit, calculateRefundProfit, calculateLayStakeQualifying, calculateLayStakeFreeBet, calculateLayStakeRefund } from '@/lib/calculations'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 const COMMISSION = 0.02 // 2% comisión del exchange (Betfair)
@@ -20,10 +20,14 @@ export async function PATCH(
     const body = await request.json()
     const { result, actualProfit: manualProfit } = body
 
-    // Obtener la apuesta actual con su operación para verificar ownership
+    // Obtener la apuesta actual con su operación y bookmaker para verificar ownership y tipo de bono
     const bet = await prisma.bet.findUnique({
       where: { id },
-      include: { operation: true }
+      include: {
+        operation: {
+          include: { bookmaker: true }
+        }
+      }
     })
 
     if (!bet) {
@@ -51,13 +55,28 @@ export async function PATCH(
       finalResult = manualProfit > 0 ? 'won' : 'lost'
     } else if (result && ['won', 'lost'].includes(result)) {
       // Apuesta con lay: calcular profit basándose en el resultado
-      const layStake = bet.betType === 'qualifying'
-        ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
-        : calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+      const isRefundBet = bet.betType === 'qualifying' && bet.operation.bookmaker.bonusType === 'only_if_lost'
+      const retention = bet.operation.bookmaker.freebetRetention || 0.75
 
-      actualProfit = bet.betType === 'qualifying'
-        ? calculateQualifyingProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
-        : calculateFreeBetProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
+      let layStake: number
+      if (isRefundBet) {
+        layStake = calculateLayStakeRefund(bet.stake, bet.oddsBack, bet.oddsLay, retention)
+      } else if (bet.betType === 'qualifying') {
+        layStake = calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
+      } else {
+        layStake = calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+      }
+
+      if (isRefundBet) {
+        // Para apuestas de reembolso, usar la fórmula especial
+        // Si gana: profit alto (no hay freebet)
+        // Si pierde: profit negativo, pero recibirás freebet que se contabiliza aparte
+        actualProfit = calculateRefundProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
+      } else if (bet.betType === 'qualifying') {
+        actualProfit = calculateQualifyingProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
+      } else {
+        actualProfit = calculateFreeBetProfit(bet.stake, bet.oddsBack, layStake, bet.oddsLay, result as 'won' | 'lost')
+      }
       finalResult = result as 'won' | 'lost'
     } else {
       return NextResponse.json({ error: 'Resultado o profit requerido' }, { status: 400 })
@@ -77,9 +96,17 @@ export async function PATCH(
 
     // Actualizar saldo del exchange automáticamente (solo si no estaba ya resuelto y NO es manual)
     if (!alreadyResolved && !isManualBet) {
-      const layStake = bet.betType === 'qualifying'
-        ? calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
-        : calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+      const isRefundBetForExchange = bet.betType === 'qualifying' && bet.operation.bookmaker.bonusType === 'only_if_lost'
+      const retentionForExchange = bet.operation.bookmaker.freebetRetention || 0.75
+
+      let layStakeForExchange: number
+      if (isRefundBetForExchange) {
+        layStakeForExchange = calculateLayStakeRefund(bet.stake, bet.oddsBack, bet.oddsLay, retentionForExchange)
+      } else if (bet.betType === 'qualifying') {
+        layStakeForExchange = calculateLayStakeQualifying(bet.stake, bet.oddsBack, bet.oddsLay)
+      } else {
+        layStakeForExchange = calculateLayStakeFreeBet(bet.stake, bet.oddsBack, bet.oddsLay)
+      }
 
       let exchangeChange = 0
 
@@ -88,7 +115,7 @@ export async function PATCH(
         exchangeChange = -bet.liability
       } else {
         // Perdió en la casa: ganaste en el exchange
-        exchangeChange = layStake * (1 - COMMISSION)
+        exchangeChange = layStakeForExchange * (1 - COMMISSION)
       }
 
       // Obtener settings del usuario actual y actualizar
