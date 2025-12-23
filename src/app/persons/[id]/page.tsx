@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
+import Breadcrumbs from '@/components/Breadcrumbs'
 
 interface Bet {
   id: string
@@ -182,15 +183,16 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
+        <Breadcrumbs items={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Personas', href: '/persons' },
+          { label: person.name }
+        ]} />
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">{person.name}</h1>
-            {person.phone && <p className="text-gray-400">{person.phone}</p>}
-          </div>
-          <Link href="/persons" className="btn btn-secondary">
-            ← Volver
-          </Link>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold">{person.name}</h1>
+          {person.phone && <p className="text-gray-400">{person.phone}</p>}
         </div>
 
         {/* Resumen general */}

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Breadcrumbs from '@/components/Breadcrumbs'
 
 interface Person {
   id: string
@@ -294,11 +295,15 @@ function NewOperationContent() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold">Nueva Operación</h1>
-          <Link href={`/persons/${personId}`} className="text-gray-400 hover:text-white">
-            ← Volver a {person.name}
-          </Link>
+        <Breadcrumbs items={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Operaciones', href: '/operations' },
+          { label: 'Nueva Operacion' }
+        ]} />
+
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold">Nueva Operacion</h1>
+          <p className="text-gray-400">Para {person.name}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 interface Person {
@@ -127,14 +126,9 @@ export default function PersonsPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Personas</h1>
-          <div className="flex gap-4">
-            <button onClick={() => setShowNew(true)} className="btn btn-primary">
-              + Nueva Persona
-            </button>
-            <Link href="/" className="btn btn-secondary">
-              ← Volver
-            </Link>
-          </div>
+          <button onClick={() => setShowNew(true)} className="btn btn-primary">
+            + Nueva Persona
+          </button>
         </div>
 
         {/* Buscador y filtros */}

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { calculateOwes, OwesBreakdown } from '@/lib/calculations'
+import Breadcrumbs from '@/components/Breadcrumbs'
 
 interface Bet {
   id: string
@@ -781,6 +782,12 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-3xl mx-auto">
+        <Breadcrumbs items={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Operaciones', href: '/operations' },
+          { label: `${operation.person.name} - ${operation.bookmaker.name}` }
+        ]} />
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">{operation.person.name}</h1>
@@ -791,14 +798,9 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
               </span>
             </p>
           </div>
-          <div className="flex gap-4">
-            <span className={`badge badge-${operation.status} text-base px-3 py-1`}>
-              {getStatusLabel(operation.status)}
-            </span>
-            <Link href="/operations" className="btn btn-secondary">
-              ← Volver
-            </Link>
-          </div>
+          <span className={`badge badge-${operation.status} text-base px-3 py-1`}>
+            {getStatusLabel(operation.status)}
+          </span>
         </div>
 
         {/* Bookmaker Info */}

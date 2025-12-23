@@ -90,16 +90,8 @@ export default function OperationsPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold">Operaciones</h1>
-          <div className="flex gap-4">
-            <Link href="/operations/new" className="btn btn-primary">
-              + Nueva Operación
-            </Link>
-            <Link href="/" className="btn btn-secondary">
-              ← Volver
-            </Link>
-          </div>
         </div>
 
         {/* Filtros */}

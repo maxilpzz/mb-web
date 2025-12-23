@@ -135,16 +135,11 @@ export default function LivePage() {
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">Partidos en Vivo</h1>
-            <p className="text-gray-400">
-              {bets.length} apuesta{bets.length !== 1 ? 's' : ''} pendiente{bets.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <Link href="/" className="btn btn-secondary">
-            Volver al Dashboard
-          </Link>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold">Partidos en Vivo</h1>
+          <p className="text-gray-400">
+            {bets.length} apuesta{bets.length !== 1 ? 's' : ''} pendiente{bets.length !== 1 ? 's' : ''}
+          </p>
         </div>
 
         {/* Stats */}
