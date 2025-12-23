@@ -184,6 +184,7 @@ function BetCard({
   onSetResult,
   onSetManualProfit,
   onDelete,
+  onEdit,
   formatMoney,
   disabled = false
 }: {
@@ -191,12 +192,106 @@ function BetCard({
   onSetResult: (betId: string, result: 'won' | 'lost') => void
   onSetManualProfit: (betId: string, profit: number) => void
   onDelete: (betId: string) => void
+  onEdit: (betId: string, data: { stake?: number; oddsBack?: number; oddsLay?: number; eventName?: string; eventDate?: string }) => void
   formatMoney: (amount: number) => string
   disabled?: boolean
 }) {
   const [manualProfit, setManualProfit] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    stake: bet.stake.toString(),
+    oddsBack: bet.oddsBack.toString(),
+    oddsLay: bet.oddsLay.toString(),
+    eventName: bet.eventName || '',
+    eventDate: bet.eventDate ? new Date(bet.eventDate).toISOString().slice(0, 16) : ''
+  })
   const isManualBet = bet.oddsBack === 0 || bet.oddsLay === 0
+
+  const handleSaveEdit = () => {
+    onEdit(bet.id, {
+      stake: parseFloat(editForm.stake) || bet.stake,
+      oddsBack: parseFloat(editForm.oddsBack) || 0,
+      oddsLay: parseFloat(editForm.oddsLay) || 0,
+      eventName: editForm.eventName,
+      eventDate: editForm.eventDate || undefined
+    })
+    setIsEditing(false)
+  }
+
+  if (isEditing && !bet.result) {
+    return (
+      <div className="p-4 rounded-lg bg-gray-700 border-2 border-blue-500">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold">
+            Editando {bet.betType === 'qualifying' ? 'Qualifying' : 'Free Bet'}
+            {bet.betNumber > 1 && ` #${bet.betNumber}`}
+          </h3>
+          <div className="flex gap-2">
+            <button onClick={handleSaveEdit} className="btn btn-primary text-sm">
+              Guardar
+            </button>
+            <button onClick={() => setIsEditing(false)} className="btn btn-secondary text-sm">
+              Cancelar
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className="label text-xs">Stake (€)</label>
+            <input
+              type="number"
+              value={editForm.stake}
+              onChange={(e) => setEditForm({ ...editForm, stake: e.target.value })}
+              className="input text-sm"
+              step="0.01"
+            />
+          </div>
+          <div>
+            <label className="label text-xs">Cuota Back</label>
+            <input
+              type="number"
+              value={editForm.oddsBack}
+              onChange={(e) => setEditForm({ ...editForm, oddsBack: e.target.value })}
+              className="input text-sm"
+              step="0.01"
+            />
+          </div>
+          <div>
+            <label className="label text-xs">Cuota Lay</label>
+            <input
+              type="number"
+              value={editForm.oddsLay}
+              onChange={(e) => setEditForm({ ...editForm, oddsLay: e.target.value })}
+              className="input text-sm"
+              step="0.01"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label text-xs">Evento</label>
+            <input
+              type="text"
+              value={editForm.eventName}
+              onChange={(e) => setEditForm({ ...editForm, eventName: e.target.value })}
+              className="input text-sm"
+              placeholder="Real Madrid vs Barcelona"
+            />
+          </div>
+          <div>
+            <label className="label text-xs">Fecha y hora</label>
+            <input
+              type="datetime-local"
+              value={editForm.eventDate}
+              onChange={(e) => setEditForm({ ...editForm, eventDate: e.target.value })}
+              className="input text-sm"
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -222,6 +317,15 @@ function BetCard({
             <span className={`badge ${bet.result === 'won' ? 'badge-completed' : 'badge-cancelled'}`}>
               {isManualBet ? 'Resultado registrado' : (bet.result === 'won' ? 'Quedó en casa' : 'Quedó en exchange')}
             </span>
+          )}
+          {!bet.result && !showDeleteConfirm && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-gray-500 hover:text-blue-400 text-sm"
+              title="Editar apuesta"
+            >
+              ✎
+            </button>
           )}
           {!showDeleteConfirm ? (
             <button
@@ -431,6 +535,20 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
       fetchOperation()
     } else {
       alert('Error al eliminar la apuesta')
+    }
+  }
+
+  const handleEditBet = async (betId: string, data: { stake?: number; oddsBack?: number; oddsLay?: number; eventName?: string; eventDate?: string }) => {
+    const res = await fetch(`/api/bets/${betId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+
+    if (res.ok) {
+      fetchOperation()
+    } else {
+      alert('Error al editar la apuesta')
     }
   }
 
@@ -951,7 +1069,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
               {qualifyingBets.length > 0 ? (
                 <div className="space-y-4">
                   {qualifyingBets.map(bet => (
-                    <BetCard key={bet.id} bet={bet} onSetResult={handleSetResult} onSetManualProfit={handleSetManualProfit} onDelete={handleDeleteBet} formatMoney={formatMoney} />
+                    <BetCard key={bet.id} bet={bet} onSetResult={handleSetResult} onSetManualProfit={handleSetManualProfit} onDelete={handleDeleteBet} onEdit={handleEditBet} formatMoney={formatMoney} />
                   ))}
                 </div>
               ) : (
@@ -1008,6 +1126,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                       onSetResult={handleSetResult}
                       onSetManualProfit={handleSetManualProfit}
                       onDelete={handleDeleteBet}
+                      onEdit={handleEditBet}
                       formatMoney={formatMoney}
                       disabled={!allQualifyingDone}
                     />

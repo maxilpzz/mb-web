@@ -18,7 +18,7 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { result, actualProfit: manualProfit } = body
+    const { result, actualProfit: manualProfit, stake, oddsBack, oddsLay, eventName, eventDate } = body
 
     // Obtener la apuesta actual con su operación y bookmaker para verificar ownership y tipo de bono
     const bet = await prisma.bet.findUnique({
@@ -37,6 +37,62 @@ export async function PATCH(
     // Verificar que la operación pertenece al usuario
     if (bet.operation.userId !== user.id) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    // Si es una edición de campos (no de resultado)
+    if (stake !== undefined || oddsBack !== undefined || oddsLay !== undefined || eventName !== undefined || eventDate !== undefined) {
+      // Solo permitir editar si no tiene resultado todavía
+      if (bet.result !== null) {
+        return NextResponse.json({ error: 'No se puede editar una apuesta ya resuelta' }, { status: 400 })
+      }
+
+      const newStake = stake !== undefined ? stake : bet.stake
+      const newOddsBack = oddsBack !== undefined ? oddsBack : bet.oddsBack
+      const newOddsLay = oddsLay !== undefined ? oddsLay : bet.oddsLay
+
+      // Recalcular liability y expectedProfit
+      const commission = 0.02
+      let layStake: number
+      let liability: number
+      let expectedProfit: number
+
+      const isRefundBet = bet.betType === 'qualifying' && bet.operation.bookmaker.bonusType === 'only_if_lost'
+      const retention = bet.operation.bookmaker.freebetRetention || 0.75
+
+      if (newOddsBack === 0 || newOddsLay === 0) {
+        // Apuesta manual
+        layStake = 0
+        liability = 0
+        expectedProfit = 0
+      } else if (isRefundBet) {
+        layStake = (newStake * (newOddsBack - retention)) / (newOddsLay - commission)
+        liability = layStake * (newOddsLay - 1)
+        expectedProfit = newStake * (newOddsBack - 1) - layStake * (newOddsLay - 1) * (1 - commission)
+      } else if (bet.betType === 'qualifying') {
+        layStake = (newStake * newOddsBack) / (newOddsLay - commission)
+        liability = layStake * (newOddsLay - 1)
+        expectedProfit = newStake * newOddsBack - layStake * newOddsLay + layStake * commission
+      } else {
+        // Freebet
+        layStake = (newStake * (newOddsBack - 1)) / (newOddsLay - commission)
+        liability = layStake * (newOddsLay - 1)
+        expectedProfit = newStake * (newOddsBack - 1) - layStake * (newOddsLay - 1) * (1 - commission)
+      }
+
+      const updatedBet = await prisma.bet.update({
+        where: { id },
+        data: {
+          stake: newStake,
+          oddsBack: newOddsBack,
+          oddsLay: newOddsLay,
+          liability,
+          expectedProfit,
+          eventName: eventName !== undefined ? eventName : bet.eventName,
+          eventDate: eventDate !== undefined ? (eventDate ? new Date(eventDate) : null) : bet.eventDate
+        }
+      })
+
+      return NextResponse.json(updatedBet)
     }
 
     // Si la apuesta ya tenía resultado, no actualizar el saldo del exchange otra vez
