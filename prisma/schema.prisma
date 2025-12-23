@@ -17,7 +17,8 @@ model Person {
   name           String
   phone          String?  // Teléfono para identificar en Bizum
   notes          String?
-  commission     Float    @default(0) // Comisión acordada con esta persona (por todas las casas)
+  commissionType String   @default("fixed_total") // "fixed_total" (pago único) o "per_operation" (por cada casa)
+  commission     Float    @default(0) // Cantidad de comisión (total o por operación según commissionType)
   commissionPaid Float    @default(0) // Comisión ya pagada a esta persona
   paused         Boolean  @default(false) // Si está pausada, no se muestran casas disponibles
   createdAt      DateTime @default(now())

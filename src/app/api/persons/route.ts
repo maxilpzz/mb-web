@@ -68,14 +68,27 @@ export async function GET() {
       const usedBookmakers = person.operations.length
       const availableBookmakers = totalBookmakers - usedBookmakers
 
+      // Calcular comisión total según el tipo
+      let totalCommissionDue = 0
+      if (person.commissionType === 'fixed_total') {
+        // Pago único por todas las casas
+        totalCommissionDue = person.commission
+      } else if (person.commissionType === 'per_operation') {
+        // Pago por cada operación completada
+        const completedOperations = person.operations.filter(op => op.status === 'completed').length
+        totalCommissionDue = person.commission * completedOperations
+      }
+
       // Return only the fields needed by the frontend
       return {
         id: person.id,
         name: person.name,
         phone: person.phone,
         notes: person.notes,
+        commissionType: person.commissionType,
         commission: person.commission,
         commissionPaid: person.commissionPaid,
+        totalCommissionDue, // Comisión total que se debe pagar
         paused: person.paused,
         totalBizumSent,
         totalMoneyReturned,
@@ -106,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name, phone, notes, commission } = body
+    const { name, phone, notes, commissionType, commission } = body
 
     if (!name) {
       return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
@@ -118,6 +131,7 @@ export async function POST(request: Request) {
         name,
         phone,
         notes,
+        commissionType: commissionType || 'fixed_total',
         commission: commission || 0
       }
     })

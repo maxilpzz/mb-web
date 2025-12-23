@@ -75,6 +75,16 @@ export async function GET(
     const completedOperations = person.operations.filter(op => op.status === 'completed').length
     const pendingOperations = person.operations.filter(op => op.status !== 'completed' && op.status !== 'cancelled').length
 
+    // Calcular comisión total según el tipo
+    let totalCommissionDue = 0
+    if (person.commissionType === 'fixed_total') {
+      // Pago único por todas las casas
+      totalCommissionDue = person.commission
+    } else if (person.commissionType === 'per_operation') {
+      // Pago por cada operación completada
+      totalCommissionDue = person.commission * completedOperations
+    }
+
     return NextResponse.json({
       ...person,
       operations: operationsWithTotals,
@@ -84,6 +94,8 @@ export async function GET(
         totalProfit,
         totalBizumSent,
         totalMoneyReturned,
+        totalCommissionDue, // Comisión total que se debe
+        commissionRemaining: totalCommissionDue - person.commissionPaid, // Comisión pendiente de pagar
         completedOperations,
         pendingOperations,
         totalOperations: person.operations.length
@@ -169,7 +181,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { name, phone, notes, commission, commissionPaid, paused } = body
+    const { name, phone, notes, commissionType, commission, commissionPaid, paused } = body
 
     const person = await prisma.person.update({
       where: { id },
@@ -177,6 +189,7 @@ export async function PATCH(
         ...(name && { name }),
         ...(phone !== undefined && { phone }),
         ...(notes !== undefined && { notes }),
+        ...(commissionType !== undefined && { commissionType }),
         ...(commission !== undefined && { commission }),
         ...(commissionPaid !== undefined && { commissionPaid }),
         ...(paused !== undefined && { paused })

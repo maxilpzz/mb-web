@@ -29,6 +29,7 @@ interface Person {
   name: string
   phone: string | null
   notes: string | null
+  commissionType: 'fixed_total' | 'per_operation'
   commission: number
   commissionPaid: number
   operations: Operation[]
@@ -38,6 +39,8 @@ interface Person {
     totalProfit: number
     totalBizumSent: number
     totalMoneyReturned: number
+    totalCommissionDue: number
+    commissionRemaining: number
     completedOperations: number
     pendingOperations: number
     totalOperations: number
@@ -53,6 +56,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     name: '',
     phone: '',
     notes: '',
+    commissionType: 'fixed_total' as 'fixed_total' | 'per_operation',
     commission: ''
   })
 
@@ -69,6 +73,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         name: data.name,
         phone: data.phone || '',
         notes: data.notes || '',
+        commissionType: data.commissionType || 'fixed_total',
         commission: data.commission.toString()
       })
     }
@@ -83,6 +88,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         name: editForm.name,
         phone: editForm.phone || null,
         notes: editForm.notes || null,
+        commissionType: editForm.commissionType,
         commission: parseFloat(editForm.commission) || 0
       })
     })
@@ -100,7 +106,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        commissionPaid: person.commission
+        commissionPaid: person.totals.totalCommissionDue
       })
     })
 
@@ -148,7 +154,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     )
   }
 
-  const commissionRemaining = person.commission - person.commissionPaid
+  const commissionRemaining = person.totals.commissionRemaining
 
   return (
     <div className="min-h-screen p-8">
@@ -205,16 +211,30 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         <div className="card mb-6">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-lg font-semibold mb-2">Comisión acordada</h2>
-              <p className="text-3xl font-bold text-purple-400">{formatMoney(person.commission)}</p>
+              <h2 className="text-lg font-semibold mb-2">Comisión</h2>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-purple-400">
+                  {formatMoney(person.totals.totalCommissionDue)}
+                </p>
+                {person.commissionType === 'per_operation' && (
+                  <span className="text-sm text-gray-400">
+                    ({formatMoney(person.commission)} × {person.totals.completedOperations} casas)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {person.commissionType === 'per_operation'
+                  ? 'Pago por cada operación completada'
+                  : 'Pago único por todas las casas'}
+              </p>
               {person.commissionPaid > 0 && (
-                <p className="text-sm text-green-500 mt-1">
-                  ✓ Pagada de la deuda: {formatMoney(person.commissionPaid)}
+                <p className="text-sm text-green-500 mt-2">
+                  ✓ Pagado: {formatMoney(person.commissionPaid)}
                 </p>
               )}
               {commissionRemaining > 0 && person.totals.totalDebtBeforeCommission > 0 && (
                 <p className="text-sm text-gray-400 mt-1">
-                  Tras pagar comisión, te deberá: {formatMoney(Math.max(0, person.totals.totalDebtBeforeCommission - person.commission))}
+                  Tras pagar comisión, te deberá: {formatMoney(Math.max(0, person.totals.totalDebtBeforeCommission - person.totals.totalCommissionDue))}
                 </p>
               )}
             </div>
@@ -224,9 +244,9 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                   onClick={handlePayCommission}
                   className="btn btn-primary"
                 >
-                  Pagar comisión de la deuda
+                  Pagar comisión ({formatMoney(commissionRemaining)})
                 </button>
-              ) : person.commission > 0 && person.commissionPaid >= person.commission ? (
+              ) : person.totals.totalCommissionDue > 0 && person.commissionPaid >= person.totals.totalCommissionDue ? (
                 <span className="badge badge-completed text-lg px-4 py-2">✓ Pagada</span>
               ) : null}
               <button
@@ -270,52 +290,93 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                 <p className="font-medium">{person.phone || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-400">Comisión acordada</p>
-                <p className="font-medium">{formatMoney(person.commission)}</p>
+                <p className="text-sm text-gray-400">Tipo de comisión</p>
+                <p className="font-medium">
+                  {person.commissionType === 'per_operation' ? 'Por cada casa' : 'Pago único'}
+                </p>
               </div>
               <div>
+                <p className="text-sm text-gray-400">
+                  {person.commissionType === 'per_operation' ? 'Comisión por casa' : 'Comisión total'}
+                </p>
+                <p className="font-medium">{formatMoney(person.commission)}</p>
+              </div>
+              <div className="col-span-2">
                 <p className="text-sm text-gray-400">Notas</p>
                 <p className="font-medium">{person.notes || '-'}</p>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">Nombre</label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="input"
-                />
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Nombre</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Teléfono</label>
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="input"
+                  />
+                </div>
               </div>
               <div>
-                <label className="label">Teléfono</label>
-                <input
-                  type="text"
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  className="input"
-                />
+                <label className="label">Tipo de comisión</label>
+                <div className="flex items-center gap-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, commissionType: 'fixed_total' })}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      editForm.commissionType === 'fixed_total'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Pago único (total)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, commissionType: 'per_operation' })}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      editForm.commissionType === 'per_operation'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Por cada casa
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="label">Comisión acordada (€)</label>
-                <input
-                  type="number"
-                  value={editForm.commission}
-                  onChange={(e) => setEditForm({ ...editForm, commission: e.target.value })}
-                  className="input"
-                  step="0.01"
-                />
-              </div>
-              <div>
-                <label className="label">Notas</label>
-                <input
-                  type="text"
-                  value={editForm.notes}
-                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                  className="input"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">
+                    {editForm.commissionType === 'per_operation' ? 'Comisión por casa (€)' : 'Comisión total (€)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={editForm.commission}
+                    onChange={(e) => setEditForm({ ...editForm, commission: e.target.value })}
+                    className="input"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="label">Notas</label>
+                  <input
+                    type="text"
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    className="input"
+                  />
+                </div>
               </div>
             </div>
           )}

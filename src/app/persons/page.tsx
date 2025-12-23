@@ -9,7 +9,10 @@ interface Person {
   name: string
   phone: string | null
   notes: string | null
+  commissionType: 'fixed_total' | 'per_operation'
   commission: number
+  commissionPaid: number
+  totalCommissionDue: number
   paused: boolean
   totalBizumSent: number
   totalMoneyReturned: number
@@ -27,7 +30,7 @@ export default function PersonsPage() {
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
-  const [newPerson, setNewPerson] = useState({ name: '', phone: '', notes: '', commission: '' })
+  const [newPerson, setNewPerson] = useState({ name: '', phone: '', notes: '', commissionType: 'fixed_total' as 'fixed_total' | 'per_operation', commission: '' })
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false)
@@ -62,13 +65,16 @@ export default function PersonsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...newPerson,
+        name: newPerson.name,
+        phone: newPerson.phone,
+        notes: newPerson.notes,
+        commissionType: newPerson.commissionType,
         commission: parseFloat(newPerson.commission) || 0
       })
     })
 
     if (res.ok) {
-      setNewPerson({ name: '', phone: '', notes: '', commission: '' })
+      setNewPerson({ name: '', phone: '', notes: '', commissionType: 'fixed_total', commission: '' })
       setShowNew(false)
       fetchPersons()
     }
@@ -211,15 +217,52 @@ export default function PersonsPage() {
                   />
                 </div>
               </div>
+              {/* Tipo de comisión */}
+              <div>
+                <label className="label">Tipo de comisión</label>
+                <div className="flex items-center gap-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setNewPerson({ ...newPerson, commissionType: 'fixed_total' })}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      newPerson.commissionType === 'fixed_total'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Pago único (total)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewPerson({ ...newPerson, commissionType: 'per_operation' })}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      newPerson.commissionType === 'per_operation'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    Por cada casa
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {newPerson.commissionType === 'fixed_total'
+                    ? 'Se paga una cantidad fija por todas las casas de apuestas'
+                    : 'Se paga una cantidad fija por cada operación completada'}
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Comisión acordada (€)</label>
+                  <label className="label">
+                    {newPerson.commissionType === 'fixed_total'
+                      ? 'Comisión total (€)'
+                      : 'Comisión por casa (€)'}
+                  </label>
                   <input
                     type="number"
                     value={newPerson.commission}
                     onChange={(e) => setNewPerson({ ...newPerson, commission: e.target.value })}
                     className="input"
-                    placeholder="Ej: 20"
+                    placeholder={newPerson.commissionType === 'fixed_total' ? 'Ej: 50' : 'Ej: 10'}
                     step="0.01"
                   />
                 </div>
@@ -373,7 +416,11 @@ export default function PersonsPage() {
                         {person.phone && <p className="text-sm text-gray-400">{person.phone}</p>}
                         {person.commission > 0 && (
                           <p className={`text-sm ${isCompleted ? 'text-purple-400/60' : 'text-purple-400'}`}>
-                            Comisión acordada: {formatMoney(person.commission)}
+                            {person.commissionType === 'per_operation'
+                              ? `${formatMoney(person.commission)}/casa → Total: ${formatMoney(person.totalCommissionDue)}`
+                              : `Comisión: ${formatMoney(person.commission)}`
+                            }
+                            {person.commissionPaid > 0 && ` (pagado: ${formatMoney(person.commissionPaid)})`}
                           </p>
                         )}
                         {!isCompleted && !isPaused && person.availableBookmakers > 0 && (
