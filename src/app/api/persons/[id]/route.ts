@@ -81,8 +81,8 @@ export async function GET(
       // Pago único por todas las casas
       totalCommissionDue = person.commission
     } else if (person.commissionType === 'per_operation') {
-      // Pago por cada operación completada
-      totalCommissionDue = person.commission * completedOperations
+      // Sumar comisiones de cada operación individual
+      totalCommissionDue = person.operations.reduce((sum, op) => sum + op.commission, 0)
     }
 
     return NextResponse.json({

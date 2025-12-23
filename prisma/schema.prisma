@@ -88,7 +88,8 @@ model Operation {
   // Dinero
   bizumSent       Float     @default(0) // Dinero que TÚ enviaste por Bizum
   moneyReturned   Float     @default(0) // Dinero que te devolvió la persona
-  commissionPaid  Float     @default(0) // Comisión pagada a la persona
+  commission      Float     @default(0) // Comisión acordada para esta operación específica
+  commissionPaid  Float     @default(0) // Comisión pagada a la persona por esta operación
 
   // Depósitos (puede haber varios, ej: Sportium)
   deposits        Deposit[]

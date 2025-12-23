@@ -91,12 +91,13 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { status, bizumSent, moneyReturned, commissionPaid, notes } = body
+    const { status, bizumSent, moneyReturned, commission, commissionPaid, notes } = body
 
     const updateData: Record<string, unknown> = {}
     if (status !== undefined) updateData.status = status
     if (bizumSent !== undefined) updateData.bizumSent = bizumSent
     if (moneyReturned !== undefined) updateData.moneyReturned = moneyReturned
+    if (commission !== undefined) updateData.commission = commission
     if (commissionPaid !== undefined) updateData.commissionPaid = commissionPaid
     if (notes !== undefined) updateData.notes = notes
 

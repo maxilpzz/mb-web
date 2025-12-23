@@ -414,10 +414,10 @@ export default function PersonsPage() {
                           )}
                         </div>
                         {person.phone && <p className="text-sm text-gray-400">{person.phone}</p>}
-                        {person.commission > 0 && (
+                        {(person.commission > 0 || person.totalCommissionDue > 0) && (
                           <p className={`text-sm ${isCompleted ? 'text-purple-400/60' : 'text-purple-400'}`}>
                             {person.commissionType === 'per_operation'
-                              ? `${formatMoney(person.commission)}/casa → Total: ${formatMoney(person.totalCommissionDue)}`
+                              ? `Comisión: ${formatMoney(person.totalCommissionDue)} (por casa)`
                               : `Comisión: ${formatMoney(person.commission)}`
                             }
                             {person.commissionPaid > 0 && ` (pagado: ${formatMoney(person.commissionPaid)})`}

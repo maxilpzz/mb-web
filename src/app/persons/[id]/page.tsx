@@ -16,6 +16,8 @@ interface Operation {
   status: string
   bizumSent: number
   moneyReturned: number
+  commission: number
+  commissionPaid: number
   moneyInBookmaker: number
   remainingDebt: number
   totalProfit: number
@@ -405,6 +407,12 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                         {op.bets.length} apuesta{op.bets.length !== 1 ? 's' : ''}
                         {op.pendingBets > 0 && ` (${op.pendingBets} pendiente${op.pendingBets !== 1 ? 's' : ''})`}
                       </p>
+                      {person.commissionType === 'per_operation' && op.commission > 0 && (
+                        <p className="text-sm text-purple-400">
+                          Comisión: {formatMoney(op.commission)}
+                          {op.commissionPaid >= op.commission && ' ✓'}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className={`badge badge-${op.status}`}>

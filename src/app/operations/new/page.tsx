@@ -7,6 +7,7 @@ import Link from 'next/link'
 interface Person {
   id: string
   name: string
+  commissionType: 'fixed_total' | 'per_operation'
   commission: number
 }
 
@@ -55,6 +56,7 @@ function NewOperationContent() {
   const [form, setForm] = useState({
     bookmakerId: '',
     bizumSent: '',
+    commission: '',
     notes: '',
   })
 
@@ -194,6 +196,7 @@ function NewOperationContent() {
         personId,
         bookmakerId: form.bookmakerId,
         bizumSent: parseFloat(form.bizumSent) || 0,
+        commission: parseFloat(form.commission) || 0,
         notes: form.notes,
         deposits,
         bets
@@ -384,17 +387,36 @@ function NewOperationContent() {
                   </div>
                 )}
 
-                <div className="mt-4">
-                  <label className="label">Bizum enviado (€)</label>
-                  <input
-                    type="number"
-                    name="bizumSent"
-                    value={form.bizumSent}
-                    onChange={(e) => setForm({ ...form, bizumSent: e.target.value })}
-                    placeholder="0"
-                    step="0.01"
-                    className="input"
-                  />
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Bizum enviado (€)</label>
+                    <input
+                      type="number"
+                      name="bizumSent"
+                      value={form.bizumSent}
+                      onChange={(e) => setForm({ ...form, bizumSent: e.target.value })}
+                      placeholder="0"
+                      step="0.01"
+                      className="input"
+                    />
+                  </div>
+                  {person?.commissionType === 'per_operation' && (
+                    <div>
+                      <label className="label">Comisión para esta casa (€)</label>
+                      <input
+                        type="number"
+                        name="commission"
+                        value={form.commission}
+                        onChange={(e) => setForm({ ...form, commission: e.target.value })}
+                        placeholder="Ej: 10"
+                        step="0.01"
+                        className="input"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Comisión que pagarás a {person?.name} por esta operación
+                      </p>
+                    </div>
+                  )}
                 </div>
               </>
             )}

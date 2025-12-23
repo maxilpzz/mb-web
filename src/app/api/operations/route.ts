@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { personId, bookmakerId, bizumSent, moneyReturned, commissionPaid, deposits, bets, notes } = body
+    const { personId, bookmakerId, bizumSent, moneyReturned, commission, commissionPaid, deposits, bets, notes } = body
 
     if (!personId || !bookmakerId) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -107,6 +107,7 @@ export async function POST(request: Request) {
         bookmakerId,
         bizumSent: bizumSent || 0,
         moneyReturned: moneyReturned || 0,
+        commission: commission || 0,
         commissionPaid: commissionPaid || 0,
         notes,
         status: 'pending',
