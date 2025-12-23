@@ -69,7 +69,7 @@ function useCountdown(eventDate: string | null) {
       status: 'finished' as const,
       timeLeft: 0,
       progress: 100,
-      label: `Termin\u00f3 hace ${formatTime(timeSinceEnd)}`
+      label: `Terminó hace ${formatTime(timeSinceEnd)}`
     }
   }
 
@@ -145,7 +145,7 @@ export default function LiveBetCard({ bet, onSetResult, isUpdating }: LiveBetCar
           href={`/operations/${bet.operation.id}`}
           className="text-xs text-blue-400 hover:text-blue-300"
         >
-          Ver operaci\u00f3n
+          Ver operación
         </Link>
       </div>
 
@@ -164,7 +164,7 @@ export default function LiveBetCard({ bet, onSetResult, isUpdating }: LiveBetCar
           )}
           {countdown.status === 'upcoming' && (
             <span className="text-blue-400 font-bold text-sm uppercase">
-              Pr\u00f3ximamente
+              Próximamente
             </span>
           )}
           {countdown.status === 'no-date' && (
@@ -234,14 +234,14 @@ export default function LiveBetCard({ bet, onSetResult, isUpdating }: LiveBetCar
           disabled={isUpdating}
           className="btn btn-success flex-1 text-sm"
         >
-          Qued\u00f3 en Exchange
+          Quedó en Exchange
         </button>
         <button
           onClick={() => onSetResult(bet.id, 'won')}
           disabled={isUpdating}
           className="btn btn-danger flex-1 text-sm"
         >
-          Qued\u00f3 en Casa
+          Quedó en Casa
         </button>
       </div>
     </div>
