@@ -14,10 +14,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/', label: 'Home', icon: '🏠' },
-  { href: '/live', label: 'En Vivo', icon: '🔴', showBadge: true },
+  { href: '/live', label: 'Live', icon: '🔴', showBadge: true },
   { href: '/operations', label: 'Ops', icon: '📋' },
   { href: '/persons', label: 'Personas', icon: '👥' },
-  { href: '/stats', label: 'Stats', icon: '📊' },
+  { href: '/accounting', label: 'Fiscal', icon: '📄' },
 ]
 
 const publicPaths = ['/login', '/register', '/pending-approval', '/auth/callback']

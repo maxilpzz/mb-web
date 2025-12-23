@@ -23,6 +23,7 @@ const navLinks: NavLink[] = [
   { href: '/operations', label: 'Operaciones' },
   { href: '/persons', label: 'Personas' },
   { href: '/stats', label: 'Stats' },
+  { href: '/accounting', label: 'Contabilidad' },
 ]
 
 const publicPaths = ['/login', '/register', '/pending-approval', '/auth/callback']
