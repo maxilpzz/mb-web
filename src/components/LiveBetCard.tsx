@@ -114,17 +114,17 @@ export default function LiveBetCard({ bet, onSetResult, isUpdating }: LiveBetCar
   const countdown = useCountdown(bet.eventDate)
 
   const statusColors = {
-    'no-date': 'border-gray-600 bg-gray-800',
-    'upcoming': 'border-blue-600 bg-blue-900/20',
-    'live': 'border-yellow-600 bg-yellow-900/20',
-    'finished': 'border-red-600 bg-red-900/30'
+    'no-date': 'match-no-date',
+    'upcoming': 'match-upcoming',
+    'live': 'match-live',
+    'finished': 'match-finished'
   }
 
   const progressColors = {
-    'no-date': 'bg-gray-500',
-    'upcoming': 'bg-blue-500',
-    'live': 'bg-yellow-500',
-    'finished': 'bg-red-500'
+    'no-date': 'progress-fill-info',
+    'upcoming': 'progress-fill-info',
+    'live': 'progress-fill-warning',
+    'finished': 'progress-fill-danger'
   }
 
   return (
@@ -153,32 +153,32 @@ export default function LiveBetCard({ bet, onSetResult, isUpdating }: LiveBetCar
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
           {countdown.status === 'finished' && (
-            <span className="text-red-400 font-bold text-sm uppercase animate-pulse">
+            <span className="text-loss font-bold text-sm uppercase animate-pulse">
               Partido terminado
             </span>
           )}
           {countdown.status === 'live' && (
-            <span className="text-yellow-400 font-bold text-sm uppercase">
+            <span className="text-warning font-bold text-sm uppercase">
               En juego
             </span>
           )}
           {countdown.status === 'upcoming' && (
-            <span className="text-blue-400 font-bold text-sm uppercase">
+            <span className="text-info font-bold text-sm uppercase">
               Próximamente
             </span>
           )}
           {countdown.status === 'no-date' && (
-            <span className="text-gray-400 text-sm">
+            <span className="text-muted text-sm">
               Sin fecha configurada
             </span>
           )}
         </div>
 
         <p className={`text-xl font-mono ${
-          countdown.status === 'finished' ? 'text-red-400' :
-          countdown.status === 'live' ? 'text-yellow-400' :
-          countdown.status === 'upcoming' ? 'text-blue-400' :
-          'text-gray-400'
+          countdown.status === 'finished' ? 'text-loss' :
+          countdown.status === 'live' ? 'text-warning' :
+          countdown.status === 'upcoming' ? 'text-info' :
+          'text-muted'
         }`}>
           {countdown.label}
         </p>
@@ -222,8 +222,8 @@ export default function LiveBetCard({ bet, onSetResult, isUpdating }: LiveBetCar
           <p className="font-medium">{bet.oddsLay.toFixed(2)}</p>
         </div>
         <div>
-          <p className="text-gray-500 text-xs">Liability</p>
-          <p className="font-medium text-yellow-400">{formatMoney(bet.liability)}</p>
+          <p className="text-muted text-xs">Liability</p>
+          <p className="font-medium text-warning">{formatMoney(bet.liability)}</p>
         </div>
       </div>
 

@@ -86,11 +86,11 @@ function OwesDisplay({
         <div className="flex items-center gap-2">
           <div>
             <p className="text-sm text-gray-400">Te debe</p>
-            <p className={`text-xl font-bold ${remainingDebt > 0 ? 'text-red-400' : 'text-green-400'}`}>
+            <p className={`text-xl font-bold ${remainingDebt > 0 ? 'text-loss' : 'text-profit'}`}>
               {formatMoney(remainingDebt)}
             </p>
             {moneyReturned > 0 && (
-              <p className="text-xs text-green-500">
+              <p className="text-xs text-profit">
                 ✓ Devuelto: {formatMoney(moneyReturned)}
               </p>
             )}
@@ -102,7 +102,7 @@ function OwesDisplay({
           )}
         </div>
         {owesData.pendingBets > 0 && (
-          <p className="text-xs text-yellow-500 mt-1">
+          <p className="text-xs text-warning mt-1">
             ⏳ {owesData.pendingBets} apuesta{owesData.pendingBets > 1 ? 's' : ''} pendiente{owesData.pendingBets > 1 ? 's' : ''}
           </p>
         )}
@@ -127,15 +127,15 @@ function OwesDisplay({
           <div className="space-y-2">
             <p className="text-gray-400 font-medium">Desglose por apuesta:</p>
             {owesData.breakdown.map((item, idx) => (
-              <div key={idx} className={`p-2 rounded ${item.result === 'won' ? 'bg-red-900/20' : 'bg-green-900/20'}`}>
+              <div key={idx} className={`p-2 rounded ${item.result === 'won' ? 'result-bookmaker' : 'result-exchange'}`}>
                 <div className="flex justify-between items-center">
                   <span className="capitalize">
                     {item.betType === 'qualifying' ? 'Qualifying' : 'Freebet'}
-                    <span className={`ml-2 text-xs ${item.result === 'won' ? 'text-red-400' : 'text-green-400'}`}>
+                    <span className={`ml-2 text-xs ${item.result === 'won' ? 'text-loss' : 'text-profit'}`}>
                       ({item.result === 'won' ? 'en casa' : 'en exchange'})
                     </span>
                   </span>
-                  <span className={`font-semibold ${item.moneyInBookmaker > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                  <span className={`font-semibold ${item.moneyInBookmaker > 0 ? 'text-loss' : 'text-profit'}`}>
                     {item.moneyInBookmaker > 0
                       ? `Te debe ${formatMoney(item.moneyInBookmaker)}`
                       : `+${formatMoney(item.exchangeWinnings)} en exchange`}
@@ -150,17 +150,17 @@ function OwesDisplay({
             <p className="text-gray-400 font-medium">Tu balance en exchange (esta operación):</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-gray-500">Liability perdida</p>
-                <p className="font-semibold text-yellow-400">-{formatMoney(owesData.liabilityLost)}</p>
+                <p className="text-xs text-muted">Liability perdida</p>
+                <p className="font-semibold text-warning">-{formatMoney(owesData.liabilityLost)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Ganado en exchange</p>
-                <p className="font-semibold text-green-400">+{formatMoney(owesData.exchangeWinnings)}</p>
+                <p className="text-xs text-muted">Ganado en exchange</p>
+                <p className="font-semibold text-profit">+{formatMoney(owesData.exchangeWinnings)}</p>
               </div>
             </div>
             <div className="flex justify-between items-center pt-2">
               <span className="text-gray-400">Balance exchange:</span>
-              <span className={`font-bold ${owesData.exchangeBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`font-bold ${owesData.exchangeBalance >= 0 ? 'text-profit' : 'text-loss'}`}>
                 {owesData.exchangeBalance >= 0 ? '+' : ''}{formatMoney(owesData.exchangeBalance)}
               </span>
             </div>
@@ -169,7 +169,7 @@ function OwesDisplay({
           {/* Total te debe */}
           <div className="pt-3 border-t border-gray-700 flex justify-between items-center">
             <span className="text-gray-400">Total te debe (dinero en casa):</span>
-            <span className={`text-lg font-bold ${owesData.totalOwes > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+            <span className={`text-lg font-bold ${owesData.totalOwes > 0 ? 'text-loss' : 'text-muted'}`}>
               {formatMoney(owesData.totalOwes)}
             </span>
           </div>
@@ -297,9 +297,9 @@ function BetCard({
   return (
     <div
       className={`p-4 rounded-lg ${
-        bet.result === null ? 'bg-gray-700' :
-        bet.result === 'won' ? 'bg-red-900/30 border border-red-700' :
-        'bg-green-900/30 border border-green-700'
+        bet.result === null ? 'result-pending' :
+        bet.result === 'won' ? 'result-bookmaker' :
+        'result-exchange'
       }`}
     >
       <div className="flex justify-between items-start mb-2">
@@ -381,11 +381,11 @@ function BetCard({
           </div>
           <div>
             <p className="text-gray-400">Liability</p>
-            <p className="font-medium text-yellow-400">{formatMoney(bet.liability)}</p>
+            <p className="font-medium text-warning">{formatMoney(bet.liability)}</p>
           </div>
           <div>
             <p className="text-gray-400">Esperado</p>
-            <p className="font-medium text-blue-400">{formatMoney(bet.expectedProfit)}</p>
+            <p className="font-medium text-info">{formatMoney(bet.expectedProfit)}</p>
           </div>
         </div>
       )}
@@ -941,34 +941,34 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                 {/* Progreso Qualifying */}
                 <div className={`p-4 rounded-lg border-2 ${
                   qualifyingCompleted === qualifyingBets.length
-                    ? 'border-green-600 bg-green-900/20'
+                    ? 'border-emerald-600 bg-emerald-900/20'
                     : operation.status === 'qualifying' || operation.status === 'pending'
-                      ? 'border-yellow-600 bg-yellow-900/20'
+                      ? 'border-amber-600 bg-amber-900/20'
                       : 'border-gray-600 bg-gray-700'
                 }`}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold">Qualifying</span>
-                    <span className={`text-sm ${qualifyingCompleted === qualifyingBets.length ? 'text-green-400' : 'text-yellow-400'}`}>
+                    <span className={`text-sm ${qualifyingCompleted === qualifyingBets.length ? 'text-profit' : 'text-warning'}`}>
                       {qualifyingCompleted}/{qualifyingBets.length}
                     </span>
                   </div>
                   <div className="w-full bg-gray-600 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${qualifyingCompleted === qualifyingBets.length ? 'bg-green-500' : 'bg-yellow-500'}`}
+                      className={`h-2 rounded-full ${qualifyingCompleted === qualifyingBets.length ? 'progress-fill-success' : 'progress-fill-warning'}`}
                       style={{ width: `${qualifyingBets.length > 0 ? (qualifyingCompleted / qualifyingBets.length) * 100 : 0}%` }}
                     />
                   </div>
                   {qualifyingCompleted === qualifyingBets.length ? (
-                    <p className="text-xs text-green-400 mt-2">✓ Completado</p>
+                    <p className="text-xs text-profit mt-2">✓ Completado</p>
                   ) : (
-                    <p className="text-xs text-yellow-400 mt-2">⏳ En progreso</p>
+                    <p className="text-xs text-warning mt-2">⏳ En progreso</p>
                   )}
                 </div>
 
                 {/* Progreso Freebet */}
                 <div className={`p-4 rounded-lg border-2 ${
                   freebetCompleted === freebetBets.length && freebetBets.length > 0
-                    ? 'border-green-600 bg-green-900/20'
+                    ? 'border-emerald-600 bg-emerald-900/20'
                     : operation.status === 'freebet'
                       ? 'border-blue-600 bg-blue-900/20'
                       : qualifyingCompleted < qualifyingBets.length
@@ -978,8 +978,8 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold">Freebet</span>
                     <span className={`text-sm ${
-                      freebetCompleted === freebetBets.length && freebetBets.length > 0 ? 'text-green-400' :
-                      operation.status === 'freebet' ? 'text-blue-400' : 'text-gray-400'
+                      freebetCompleted === freebetBets.length && freebetBets.length > 0 ? 'text-profit' :
+                      operation.status === 'freebet' ? 'text-info' : 'text-muted'
                     }`}>
                       {freebetCompleted}/{freebetBets.length}
                     </span>
@@ -987,18 +987,18 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                   <div className="w-full bg-gray-600 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full ${
-                        freebetCompleted === freebetBets.length && freebetBets.length > 0 ? 'bg-green-500' :
-                        operation.status === 'freebet' ? 'bg-blue-500' : 'bg-gray-500'
+                        freebetCompleted === freebetBets.length && freebetBets.length > 0 ? 'progress-fill-success' :
+                        operation.status === 'freebet' ? 'progress-fill-info' : 'bg-gray-500'
                       }`}
                       style={{ width: `${freebetBets.length > 0 ? (freebetCompleted / freebetBets.length) * 100 : 0}%` }}
                     />
                   </div>
                   {qualifyingCompleted < qualifyingBets.length ? (
-                    <p className="text-xs text-gray-500 mt-2">🔒 Completa qualifying primero</p>
+                    <p className="text-xs text-muted mt-2">🔒 Completa qualifying primero</p>
                   ) : freebetCompleted === freebetBets.length && freebetBets.length > 0 ? (
-                    <p className="text-xs text-green-400 mt-2">✓ Completado</p>
+                    <p className="text-xs text-profit mt-2">✓ Completado</p>
                   ) : (
-                    <p className="text-xs text-blue-400 mt-2">⏳ Pendiente</p>
+                    <p className="text-xs text-info mt-2">⏳ Pendiente</p>
                   )}
                 </div>
               </div>
@@ -1015,14 +1015,14 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
             <p className={`text-xl font-bold ${
               operation.status === 'completed'
                 ? (operation.totalProfit >= 0 ? 'positive' : 'negative')
-                : 'text-blue-400'
+                : 'text-info'
             }`}>
               {formatMoney(operation.status === 'completed' ? operation.totalProfit : operation.totalExpectedProfit)}
             </p>
           </div>
           <div className="card">
             <p className="text-sm text-gray-400">Liability actual</p>
-            <p className="text-xl font-bold text-yellow-400">{formatMoney(operation.totalLiability)}</p>
+            <p className="text-xl font-bold text-warning">{formatMoney(operation.totalLiability)}</p>
           </div>
           <div className="card">
             <p className="text-sm text-gray-400">Apuestas pendientes</p>

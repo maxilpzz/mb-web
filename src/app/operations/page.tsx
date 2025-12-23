@@ -148,7 +148,7 @@ export default function OperationsPage() {
                         {formatMoney(op.totalProfit)}
                       </p>
                     ) : (
-                      <p className="text-yellow-400">
+                      <p className="text-warning">
                         Liability: {formatMoney(op.totalLiability)}
                       </p>
                     )}
@@ -166,8 +166,8 @@ export default function OperationsPage() {
                     <div
                       key={bet.id}
                       className={`text-sm p-2 rounded ${
-                        bet.result === null ? 'bg-gray-700' :
-                        bet.result === 'won' ? 'bg-red-900/30' : 'bg-green-900/30'
+                        bet.result === null ? 'result-pending' :
+                        bet.result === 'won' ? 'result-bookmaker' : 'result-exchange'
                       }`}
                     >
                       <div className="flex justify-between items-center">
@@ -176,7 +176,7 @@ export default function OperationsPage() {
                           {bet.betNumber > 1 && `#${bet.betNumber}`}
                         </span>
                         {bet.result && (
-                          <span className={`text-xs ${bet.result === 'won' ? 'text-red-400' : 'text-green-400'}`}>
+                          <span className={`text-xs ${bet.result === 'won' ? 'text-loss' : 'text-profit'}`}>
                             {bet.result === 'won' ? 'CASA' : 'EXCH'}
                           </span>
                         )}

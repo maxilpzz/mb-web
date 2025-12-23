@@ -113,11 +113,11 @@ export default function Home() {
           </p>
           {(data?.totalProfit || 0) > 0 && (
             <div className="mt-2 pt-2 border-t border-gray-700 text-xs">
-              <div className="flex justify-between text-green-400">
+              <div className="flex justify-between text-profit">
                 <span>Exchange:</span>
                 <span>{formatMoney(data?.profitInExchange || 0)} ({((data?.profitInExchange || 0) / (data?.totalProfit || 1) * 100).toFixed(0)}%)</span>
               </div>
-              <div className="flex justify-between text-red-400">
+              <div className="flex justify-between text-loss">
                 <span>Casas:</span>
                 <span>{formatMoney(data?.profitInBookmaker || 0)} ({((data?.profitInBookmaker || 0) / (data?.totalProfit || 1) * 100).toFixed(0)}%)</span>
               </div>
@@ -140,18 +140,18 @@ export default function Home() {
         </div>
         <div className="card">
           <p className="text-sm text-gray-400">Liability Actual</p>
-          <p className="text-2xl font-bold text-yellow-400">
+          <p className="text-2xl font-bold text-warning">
             {formatMoney(data?.totalLiability || 0)}
           </p>
         </div>
         {/* Saldo Exchange (editable) */}
-        <div className="card bg-green-900/20 border border-green-800">
+        <div className="card card-success">
           <div className="flex justify-between items-start">
             <p className="text-sm text-gray-400">Saldo Exchange</p>
             {!editingExchange && (
               <button
                 onClick={() => setEditingExchange(true)}
-                className="text-xs text-green-400 hover:underline"
+                className="text-xs text-profit hover:underline"
               >
                 Editar
               </button>
@@ -188,7 +188,7 @@ export default function Home() {
             </div>
           ) : (
             <>
-              <p className="text-2xl font-bold text-green-400">
+              <p className="text-2xl font-bold text-profit">
                 {formatMoney(exchangeBalance - (data?.totalLiability || 0))}
               </p>
               <p className="text-xs text-gray-500">
@@ -201,17 +201,17 @@ export default function Home() {
 
       {/* Money flow summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="card bg-blue-900/20">
-          <p className="text-sm text-gray-400">Bizum Enviado</p>
+        <div className="card card-info">
+          <p className="text-sm text-secondary">Bizum Enviado</p>
           <p className="text-xl font-bold">{formatMoney(data?.totalBizumSent || 0)}</p>
         </div>
-        <div className="card bg-green-900/20">
-          <p className="text-sm text-gray-400">Dinero Devuelto</p>
+        <div className="card card-success">
+          <p className="text-sm text-secondary">Dinero Devuelto</p>
           <p className="text-xl font-bold">{formatMoney(data?.totalMoneyReturned || 0)}</p>
         </div>
-        <div className="card bg-purple-900/20">
-          <p className="text-sm text-gray-400">Comisiones Pagadas</p>
-          <p className="text-xl font-bold">{formatMoney(data?.totalCommissionPaid || 0)}</p>
+        <div className="card bg-overlay-purple border border-purple-700/50">
+          <p className="text-sm text-secondary">Comisiones Pagadas</p>
+          <p className="text-xl font-bold text-commission">{formatMoney(data?.totalCommissionPaid || 0)}</p>
         </div>
       </div>
 

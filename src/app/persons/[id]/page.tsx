@@ -199,7 +199,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="card">
             <p className="text-sm text-gray-400">Dinero en casas</p>
-            <p className="text-2xl font-bold text-yellow-400">
+            <p className="text-2xl font-bold text-warning">
               {formatMoney(person.totals.totalDebtBeforeCommission)}
             </p>
             {person.commissionPaid > 0 && (
@@ -210,11 +210,11 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
           </div>
           <div className="card">
             <p className="text-sm text-gray-400">Te debe</p>
-            <p className={`text-2xl font-bold ${person.totals.totalDebt > 0 ? 'text-red-400' : 'text-green-400'}`}>
+            <p className={`text-2xl font-bold ${person.totals.totalDebt > 0 ? 'text-loss' : 'text-profit'}`}>
               {formatMoney(person.totals.totalDebt)}
             </p>
             {person.totals.totalDebt === 0 && person.totals.totalDebtBeforeCommission > 0 && (
-              <p className="text-xs text-green-400 mt-1">Liquidado</p>
+              <p className="text-xs text-profit mt-1">Liquidado</p>
             )}
           </div>
           <div className="card">
@@ -253,7 +253,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                   : 'Pago único por todas las casas'}
               </p>
               {person.commissionPaid > 0 && (
-                <p className="text-sm text-green-500 mt-2">
+                <p className="text-sm text-profit mt-2">
                   ✓ Pagado: {formatMoney(person.commissionPaid)}
                 </p>
               )}
@@ -480,12 +480,12 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                         {getStatusLabel(op.status)}
                       </span>
                       {op.remainingDebt > 0 && (
-                        <p className="text-sm text-red-400 mt-1">
+                        <p className="text-sm text-loss mt-1">
                           Te debe {formatMoney(op.remainingDebt)}
                         </p>
                       )}
                       {op.status === 'completed' && (
-                        <p className={`text-sm mt-1 ${op.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <p className={`text-sm mt-1 ${op.totalProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
                           {op.totalProfit >= 0 ? '+' : ''}{formatMoney(op.totalProfit)}
                         </p>
                       )}

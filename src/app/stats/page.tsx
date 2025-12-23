@@ -104,24 +104,24 @@ export default function StatsPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
               <div className="card">
                 <p className="text-sm text-gray-400">Beneficio Bruto</p>
-                <p className={`text-2xl font-bold ${data.totals.grossProfit >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                <p className={`text-2xl font-bold ${data.totals.grossProfit >= 0 ? 'text-info' : 'text-loss'}`}>
                   {formatMoney(data.totals.grossProfit)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Ganancias de apuestas</p>
+                <p className="text-xs text-muted mt-1">Ganancias de apuestas</p>
               </div>
               <div className="card">
                 <p className="text-sm text-gray-400">Comisiones Pagadas</p>
-                <p className="text-2xl font-bold text-purple-400">
+                <p className="text-2xl font-bold text-commission">
                   -{formatMoney(data.totals.commissionsPaid)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Pagado a personas</p>
+                <p className="text-xs text-muted mt-1">Pagado a personas</p>
               </div>
-              <div className="card border-2 border-green-600">
+              <div className="card border-2 border-emerald-600">
                 <p className="text-sm text-gray-400">Beneficio Neto</p>
-                <p className={`text-2xl font-bold ${data.totals.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <p className={`text-2xl font-bold ${data.totals.netProfit >= 0 ? 'text-profit' : 'text-loss'}`}>
                   {formatMoney(data.totals.netProfit)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Tu ganancia real</p>
+                <p className="text-xs text-muted mt-1">Tu ganancia real</p>
               </div>
               <div className="card">
                 <p className="text-sm text-gray-400">Operaciones</p>

@@ -1,8 +1,57 @@
 @import "tailwindcss";
 
+/* ============================================
+   COLOR SYSTEM - Matched Betting App
+   ============================================
+
+   JERARQUIA DE COLORES:
+
+   1. SUPERFICIES (fondos)
+      - background: #0a0a0a (negro base)
+      - surface-1: gray-900 (navbar, footer)
+      - surface-2: gray-800 (cards principales)
+      - surface-3: gray-700 (elementos elevados, inputs)
+
+   2. TEXTO
+      - text-primary: gray-100 (titulos, texto importante)
+      - text-secondary: gray-400 (texto normal)
+      - text-muted: gray-500 (texto secundario, hints)
+      - text-disabled: gray-600 (deshabilitado)
+
+   3. COLORES SEMANTICOS
+      - primary: blue (acciones principales)
+      - success: emerald (positivo, exchange, ganancias)
+      - danger: red (negativo, casa, perdidas)
+      - warning: amber (alertas, liability, pendiente)
+      - info: cyan (informativo)
+      - purple: purple (comisiones, freebets)
+
+   4. BORDES
+      - border-default: gray-700
+      - border-subtle: gray-800
+      - border-strong: gray-600
+
+   ============================================ */
+
 :root {
+  /* Base */
   --background: #0a0a0a;
   --foreground: #ededed;
+
+  /* Surfaces */
+  --surface-1: #111827; /* gray-900 */
+  --surface-2: #1f2937; /* gray-800 */
+  --surface-3: #374151; /* gray-700 */
+
+  /* Semantic Colors - Main */
+  --color-primary: #2563eb; /* blue-600 */
+  --color-primary-hover: #1d4ed8; /* blue-700 */
+  --color-success: #10b981; /* emerald-500 */
+  --color-success-hover: #059669; /* emerald-600 */
+  --color-danger: #ef4444; /* red-500 */
+  --color-danger-hover: #dc2626; /* red-600 */
+  --color-warning: #f59e0b; /* amber-500 */
+  --color-warning-hover: #d97706; /* amber-600 */
 }
 
 @theme inline {
@@ -16,25 +65,55 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Custom styles */
+/* ============================================
+   SURFACES & CARDS
+   ============================================ */
+
 .card {
   @apply bg-gray-800 rounded-lg p-4 border border-gray-700;
 }
 
+.card-elevated {
+  @apply bg-gray-700 rounded-lg p-4 border border-gray-600;
+}
+
+.card-success {
+  @apply bg-emerald-900/20 rounded-lg p-4 border border-emerald-700/50;
+}
+
+.card-danger {
+  @apply bg-red-900/20 rounded-lg p-4 border border-red-700/50;
+}
+
+.card-warning {
+  @apply bg-amber-900/20 rounded-lg p-4 border border-amber-700/50;
+}
+
+.card-info {
+  @apply bg-cyan-900/20 rounded-lg p-4 border border-cyan-700/50;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
 .btn {
-  @apply px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer;
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer;
+  @apply active:scale-95;
 }
 
 .btn-primary {
   @apply bg-blue-600 hover:bg-blue-700 text-white;
+  @apply focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900;
 }
 
 .btn-secondary {
-  @apply bg-gray-600 hover:bg-gray-700 text-white;
+  @apply bg-gray-700 hover:bg-gray-600 text-gray-100;
+  @apply border border-gray-600;
 }
 
 .btn-success {
-  @apply bg-green-600 hover:bg-green-700 text-white;
+  @apply bg-emerald-600 hover:bg-emerald-700 text-white;
 }
 
 .btn-danger {
@@ -42,53 +121,251 @@ body {
 }
 
 .btn-warning {
-  @apply bg-yellow-600 hover:bg-yellow-700 text-white;
+  @apply bg-amber-600 hover:bg-amber-700 text-white;
 }
 
+.btn-ghost {
+  @apply bg-transparent hover:bg-gray-700 text-gray-300;
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+
 .input {
-  @apply w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500;
+  @apply w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg;
+  @apply text-gray-100 placeholder-gray-500;
+  @apply focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500;
+  @apply transition-colors duration-200;
 }
 
 .select {
-  @apply w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500;
+  @apply w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg;
+  @apply text-gray-100;
+  @apply focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500;
+  @apply transition-colors duration-200;
 }
 
 .label {
   @apply block text-sm font-medium text-gray-300 mb-1;
 }
 
+/* ============================================
+   TEXT COLORS - SEMANTIC
+   ============================================ */
+
+/* Valores monetarios */
+.text-profit {
+  @apply text-emerald-400;
+}
+
+.text-loss {
+  @apply text-red-400;
+}
+
+/* Alias para compatibilidad */
 .positive {
-  @apply text-green-400;
+  @apply text-emerald-400;
 }
 
 .negative {
   @apply text-red-400;
 }
 
+/* Estados */
+.text-warning {
+  @apply text-amber-400;
+}
+
+.text-info {
+  @apply text-cyan-400;
+}
+
+.text-commission {
+  @apply text-purple-400;
+}
+
+/* Texto jerarquico */
+.text-primary {
+  @apply text-gray-100;
+}
+
+.text-secondary {
+  @apply text-gray-400;
+}
+
+.text-muted {
+  @apply text-gray-500;
+}
+
+/* ============================================
+   BADGES - ESTADOS
+   ============================================ */
+
 .badge {
-  @apply px-2 py-1 rounded text-xs font-medium;
+  @apply px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide;
 }
 
+/* Estados de operacion */
 .badge-pending {
-  @apply bg-yellow-600 text-yellow-100;
-}
-
-.badge-in_progress {
-  @apply bg-blue-600 text-blue-100;
-}
-
-.badge-completed {
-  @apply bg-green-600 text-green-100;
-}
-
-.badge-cancelled {
-  @apply bg-red-600 text-red-100;
+  @apply bg-amber-500/20 text-amber-400 border border-amber-500/30;
 }
 
 .badge-qualifying {
-  @apply bg-blue-600 text-blue-100;
+  @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
 }
 
 .badge-freebet {
-  @apply bg-purple-600 text-purple-100;
+  @apply bg-purple-500/20 text-purple-400 border border-purple-500/30;
+}
+
+.badge-completed {
+  @apply bg-emerald-500/20 text-emerald-400 border border-emerald-500/30;
+}
+
+.badge-cancelled {
+  @apply bg-red-500/20 text-red-400 border border-red-500/30;
+}
+
+/* Alias para in_progress */
+.badge-in_progress {
+  @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
+}
+
+/* ============================================
+   INDICADORES DE RESULTADO
+   ============================================ */
+
+/* Resultado: Quedo en exchange (ganamos en exchange) */
+.result-exchange {
+  @apply bg-emerald-900/30 border border-emerald-700/50;
+}
+
+/* Resultado: Quedo en casa (perdimos en exchange) */
+.result-bookmaker {
+  @apply bg-red-900/30 border border-red-700/50;
+}
+
+/* Apuesta pendiente */
+.result-pending {
+  @apply bg-gray-700 border border-gray-600;
+}
+
+/* ============================================
+   LIVE PAGE - ESTADOS DE PARTIDO
+   ============================================ */
+
+.match-finished {
+  @apply border-red-500 bg-red-900/20;
+}
+
+.match-live {
+  @apply border-amber-500 bg-amber-900/20;
+}
+
+.match-upcoming {
+  @apply border-blue-500 bg-blue-900/20;
+}
+
+.match-no-date {
+  @apply border-gray-600 bg-gray-800;
+}
+
+/* ============================================
+   PROGRESS BARS
+   ============================================ */
+
+.progress-bar {
+  @apply w-full bg-gray-700 rounded-full h-2;
+}
+
+.progress-fill-success {
+  @apply h-2 rounded-full bg-emerald-500 transition-all duration-500;
+}
+
+.progress-fill-warning {
+  @apply h-2 rounded-full bg-amber-500 transition-all duration-500;
+}
+
+.progress-fill-danger {
+  @apply h-2 rounded-full bg-red-500 transition-all duration-500;
+}
+
+.progress-fill-info {
+  @apply h-2 rounded-full bg-blue-500 transition-all duration-500;
+}
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+
+.nav-link {
+  @apply px-3 py-2 rounded-lg text-sm font-medium transition-colors;
+  @apply text-gray-400 hover:text-gray-100 hover:bg-gray-800/50;
+}
+
+.nav-link-active {
+  @apply bg-gray-800 text-gray-100;
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+
+/* Overlay backgrounds con opacidad consistente */
+.bg-overlay-success {
+  @apply bg-emerald-900/20;
+}
+
+.bg-overlay-danger {
+  @apply bg-red-900/20;
+}
+
+.bg-overlay-warning {
+  @apply bg-amber-900/20;
+}
+
+.bg-overlay-info {
+  @apply bg-blue-900/20;
+}
+
+.bg-overlay-purple {
+  @apply bg-purple-900/20;
+}
+
+/* Focus states */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900;
+}
+
+/* Dividers */
+.divider {
+  @apply border-t border-gray-700;
+}
+
+.divider-subtle {
+  @apply border-t border-gray-800;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Live indicator */
+.live-indicator {
+  @apply inline-block w-2 h-2 bg-red-500 rounded-full;
+  animation: pulse-slow 1.5s ease-in-out infinite;
 }
