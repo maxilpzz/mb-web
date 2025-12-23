@@ -35,15 +35,27 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [pendingBetsCount, setPendingBetsCount] = useState(0)
+  const [finishedBetsCount, setFinishedBetsCount] = useState(0)
 
-  // Fetch pending bets count
+  const MATCH_DURATION_MS = 2 * 60 * 60 * 1000 // 2 horas
+
+  // Fetch pending bets and count only finished matches
   const fetchPendingBets = async () => {
     try {
       const res = await fetch('/api/bets/pending')
       if (res.ok) {
         const bets = await res.json()
-        setPendingBetsCount(Array.isArray(bets) ? bets.length : 0)
+        if (Array.isArray(bets)) {
+          const now = Date.now()
+          // Solo contar partidos que ya han terminado
+          const finishedCount = bets.filter((bet: { eventDate: string | null }) => {
+            if (!bet.eventDate) return false
+            const startTime = new Date(bet.eventDate).getTime()
+            const endTime = startTime + MATCH_DURATION_MS
+            return now >= endTime // Partido terminado
+          }).length
+          setFinishedBetsCount(finishedCount)
+        }
       }
     } catch {
       // Silently fail
@@ -134,9 +146,9 @@ export default function Navbar() {
                 }`}
               >
                 {link.label}
-                {link.showBadge && pendingBetsCount > 0 && (
+                {link.showBadge && finishedBetsCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white animate-pulse">
-                    {pendingBetsCount}
+                    {finishedBetsCount}
                   </span>
                 )}
               </Link>
@@ -195,9 +207,9 @@ export default function Navbar() {
                 }`}
               >
                 {link.label}
-                {link.showBadge && pendingBetsCount > 0 && (
+                {link.showBadge && finishedBetsCount > 0 && (
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
-                    {pendingBetsCount}
+                    {finishedBetsCount}
                   </span>
                 )}
               </Link>

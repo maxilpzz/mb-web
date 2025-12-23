@@ -26,15 +26,27 @@ export default function BottomNav() {
   const pathname = usePathname()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [pendingBetsCount, setPendingBetsCount] = useState(0)
+  const [finishedBetsCount, setFinishedBetsCount] = useState(0)
 
-  // Fetch pending bets count
+  const MATCH_DURATION_MS = 2 * 60 * 60 * 1000 // 2 horas
+
+  // Fetch pending bets and count only finished matches
   const fetchPendingBets = async () => {
     try {
       const res = await fetch('/api/bets/pending')
       if (res.ok) {
         const bets = await res.json()
-        setPendingBetsCount(Array.isArray(bets) ? bets.length : 0)
+        if (Array.isArray(bets)) {
+          const now = Date.now()
+          // Solo contar partidos que ya han terminado
+          const finishedCount = bets.filter((bet: { eventDate: string | null }) => {
+            if (!bet.eventDate) return false
+            const startTime = new Date(bet.eventDate).getTime()
+            const endTime = startTime + MATCH_DURATION_MS
+            return now >= endTime // Partido terminado
+          }).length
+          setFinishedBetsCount(finishedCount)
+        }
       }
     } catch {
       // Silently fail
@@ -97,9 +109,9 @@ export default function BottomNav() {
           >
             <span className="text-xl mb-0.5">{item.icon}</span>
             <span className="text-xs font-medium">{item.label}</span>
-            {item.showBadge && pendingBetsCount > 0 && (
+            {item.showBadge && finishedBetsCount > 0 && (
               <span className="absolute top-1 right-1/4 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {pendingBetsCount}
+                {finishedBetsCount}
               </span>
             )}
           </Link>
