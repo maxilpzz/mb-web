@@ -61,6 +61,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     commissionType: 'fixed_total' as 'fixed_total' | 'per_operation',
     commission: ''
   })
+  const [operationCommissions, setOperationCommissions] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetchPerson()
@@ -78,6 +79,12 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         commissionType: data.commissionType || 'fixed_total',
         commission: data.commission.toString()
       })
+      // Inicializar comisiones por operación
+      const commissions: Record<string, string> = {}
+      data.operations.forEach((op: Operation) => {
+        commissions[op.id] = op.commission.toString()
+      })
+      setOperationCommissions(commissions)
     }
     setLoading(false)
   }
@@ -96,6 +103,20 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
     })
 
     if (res.ok) {
+      // Si es por operación, guardar comisiones individuales
+      if (editForm.commissionType === 'per_operation' && person) {
+        await Promise.all(
+          person.operations.map(op =>
+            fetch(`/api/operations/${op.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                commission: parseFloat(operationCommissions[op.id]) || 0
+              })
+            })
+          )
+        )
+      }
       setEditing(false)
       fetchPerson()
     }
@@ -357,29 +378,67 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">
-                    {editForm.commissionType === 'per_operation' ? 'Comisión por casa (€)' : 'Comisión total (€)'}
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.commission}
-                    onChange={(e) => setEditForm({ ...editForm, commission: e.target.value })}
-                    className="input"
-                    step="0.01"
-                  />
+              {editForm.commissionType === 'fixed_total' ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Comisión total (€)</label>
+                    <input
+                      type="number"
+                      value={editForm.commission}
+                      onChange={(e) => setEditForm({ ...editForm, commission: e.target.value })}
+                      className="input"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Notas</label>
+                    <input
+                      type="text"
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      className="input"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="label">Notas</label>
-                  <input
-                    type="text"
-                    value={editForm.notes}
-                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                    className="input"
-                  />
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="label">Comisión por cada casa (€)</label>
+                    {person.operations.length === 0 ? (
+                      <p className="text-gray-500 text-sm">No hay operaciones creadas</p>
+                    ) : (
+                      <div className="space-y-2 mt-2">
+                        {person.operations.map(op => (
+                          <div key={op.id} className="flex items-center gap-3">
+                            <span className="text-sm text-gray-300 w-32 truncate">{op.bookmaker.name}</span>
+                            <input
+                              type="number"
+                              value={operationCommissions[op.id] || ''}
+                              onChange={(e) => setOperationCommissions({
+                                ...operationCommissions,
+                                [op.id]: e.target.value
+                              })}
+                              className="input w-24"
+                              step="0.01"
+                              placeholder="0"
+                            />
+                            <span className="text-gray-500 text-sm">€</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="label">Notas</label>
+                    <input
+                      type="text"
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      className="input"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
