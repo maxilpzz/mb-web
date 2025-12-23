@@ -1,24 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { getCurrentUser } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
-    // Get user from session
-    const cookieStore = await cookies()
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          cookie: cookieStore.toString()
-        }
-      }
-    })
-
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
 
     if (!user) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
