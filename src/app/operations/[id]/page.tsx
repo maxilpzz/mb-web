@@ -183,16 +183,19 @@ function BetCard({
   bet,
   onSetResult,
   onSetManualProfit,
+  onDelete,
   formatMoney,
   disabled = false
 }: {
   bet: Bet
   onSetResult: (betId: string, result: 'won' | 'lost') => void
   onSetManualProfit: (betId: string, profit: number) => void
+  onDelete: (betId: string) => void
   formatMoney: (amount: number) => string
   disabled?: boolean
 }) {
   const [manualProfit, setManualProfit] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const isManualBet = bet.oddsBack === 0 || bet.oddsLay === 0
 
   return (
@@ -214,11 +217,40 @@ function BetCard({
             <p className="text-sm text-gray-400">{bet.eventName}</p>
           )}
         </div>
-        {bet.result && (
-          <span className={`badge ${bet.result === 'won' ? 'badge-completed' : 'badge-cancelled'}`}>
-            {isManualBet ? 'Resultado registrado' : (bet.result === 'won' ? 'Quedó en casa' : 'Quedó en exchange')}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {bet.result && (
+            <span className={`badge ${bet.result === 'won' ? 'badge-completed' : 'badge-cancelled'}`}>
+              {isManualBet ? 'Resultado registrado' : (bet.result === 'won' ? 'Quedó en casa' : 'Quedó en exchange')}
+            </span>
+          )}
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-gray-500 hover:text-red-400 text-sm"
+              title="Eliminar apuesta"
+            >
+              ✕
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  onDelete(bet.id)
+                  setShowDeleteConfirm(false)
+                }}
+                className="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+              >
+                Eliminar
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {isManualBet ? (
@@ -387,6 +419,18 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
 
     if (res.ok) {
       fetchOperation()
+    }
+  }
+
+  const handleDeleteBet = async (betId: string) => {
+    const res = await fetch(`/api/bets/${betId}`, {
+      method: 'DELETE'
+    })
+
+    if (res.ok) {
+      fetchOperation()
+    } else {
+      alert('Error al eliminar la apuesta')
     }
   }
 
@@ -907,7 +951,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
               {qualifyingBets.length > 0 ? (
                 <div className="space-y-4">
                   {qualifyingBets.map(bet => (
-                    <BetCard key={bet.id} bet={bet} onSetResult={handleSetResult} onSetManualProfit={handleSetManualProfit} formatMoney={formatMoney} />
+                    <BetCard key={bet.id} bet={bet} onSetResult={handleSetResult} onSetManualProfit={handleSetManualProfit} onDelete={handleDeleteBet} formatMoney={formatMoney} />
                   ))}
                 </div>
               ) : (
@@ -963,6 +1007,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                       bet={bet}
                       onSetResult={handleSetResult}
                       onSetManualProfit={handleSetManualProfit}
+                      onDelete={handleDeleteBet}
                       formatMoney={formatMoney}
                       disabled={!allQualifyingDone}
                     />

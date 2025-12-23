@@ -167,3 +167,76 @@ export async function PATCH(
     return NextResponse.json({ error: 'Error al actualizar apuesta' }, { status: 500 })
   }
 }
+
+// DELETE: Eliminar una apuesta individual
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    // Obtener la apuesta con su operación para verificar ownership
+    const bet = await prisma.bet.findUnique({
+      where: { id },
+      include: {
+        operation: true
+      }
+    })
+
+    if (!bet) {
+      return NextResponse.json({ error: 'Apuesta no encontrada' }, { status: 404 })
+    }
+
+    // Verificar que la operación pertenece al usuario
+    if (bet.operation.userId !== user.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    // Eliminar la apuesta
+    await prisma.bet.delete({
+      where: { id }
+    })
+
+    // Actualizar el estado de la operación si es necesario
+    const remainingBets = await prisma.bet.findMany({
+      where: { operationId: bet.operationId }
+    })
+
+    const qualifyingBets = remainingBets.filter(b => b.betType === 'qualifying')
+    const freebetBets = remainingBets.filter(b => b.betType === 'freebet')
+
+    const allQualifyingCompleted = qualifyingBets.length === 0 || qualifyingBets.every(b => b.result !== null)
+    const allFreebetsCompleted = freebetBets.length === 0 || freebetBets.every(b => b.result !== null)
+
+    let newStatus: string
+
+    if (remainingBets.length === 0) {
+      // Sin apuestas, volver a pending
+      newStatus = 'pending'
+    } else if (allQualifyingCompleted && allFreebetsCompleted) {
+      newStatus = 'completed'
+    } else if (allQualifyingCompleted && freebetBets.length > 0) {
+      newStatus = 'freebet'
+    } else if (qualifyingBets.some(b => b.result !== null)) {
+      newStatus = 'qualifying'
+    } else {
+      newStatus = 'pending'
+    }
+
+    await prisma.operation.update({
+      where: { id: bet.operationId },
+      data: { status: newStatus }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting bet:', error)
+    return NextResponse.json({ error: 'Error al eliminar apuesta' }, { status: 500 })
+  }
+}
