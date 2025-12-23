@@ -39,6 +39,7 @@ interface BetForm {
   oddsBack: string
   oddsLay: string
   eventName: string
+  eventDate: string
 }
 
 function NewOperationContent() {
@@ -114,7 +115,8 @@ function NewOperationContent() {
           stake: bookmaker.maxDeposit.toString(),
           oddsBack: '',
           oddsLay: '',
-          eventName: ''
+          eventName: '',
+          eventDate: ''
         })
       }
       setQualifyingBets(newQualifyingBets)
@@ -128,7 +130,8 @@ function NewOperationContent() {
           stake: bookmaker.freebetValue?.toString() || (bookmaker.maxBonus / bookmaker.numFreebets).toString(),
           oddsBack: '',
           oddsLay: '',
-          eventName: ''
+          eventName: '',
+          eventDate: ''
         })
       }
       setFreebets(newFreebets)
@@ -170,7 +173,8 @@ function NewOperationContent() {
         stake: parseFloat(b.stake),
         oddsBack: parseFloat(b.oddsBack),
         oddsLay: parseFloat(b.oddsLay),
-        eventName: b.eventName || undefined
+        eventName: b.eventName || undefined,
+        eventDate: b.eventDate || undefined
       })),
       ...freebets.filter(b => b.stake && b.oddsBack && b.oddsLay).map(b => ({
         betType: b.betType,
@@ -178,7 +182,8 @@ function NewOperationContent() {
         stake: parseFloat(b.stake),
         oddsBack: parseFloat(b.oddsBack),
         oddsLay: parseFloat(b.oddsLay),
-        eventName: b.eventName || undefined
+        eventName: b.eventName || undefined,
+        eventDate: b.eventDate || undefined
       }))
     ]
 
@@ -475,13 +480,22 @@ function NewOperationContent() {
                       />
                     </div>
                   </div>
-                  <input
-                    type="text"
-                    value={bet.eventName}
-                    onChange={(e) => handleBetChange(index, 'eventName', e.target.value, 'qualifying')}
-                    placeholder="Evento (opcional)"
-                    className="input mt-3"
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <input
+                      type="text"
+                      value={bet.eventName}
+                      onChange={(e) => handleBetChange(index, 'eventName', e.target.value, 'qualifying')}
+                      placeholder="Evento (ej: Real Madrid vs Barcelona)"
+                      className="input"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={bet.eventDate}
+                      onChange={(e) => handleBetChange(index, 'eventDate', e.target.value, 'qualifying')}
+                      className="input"
+                      title="Fecha y hora del partido"
+                    />
+                  </div>
                   {parseFloat(bet.oddsLay) > 0 && parseFloat(bet.oddsBack) > 0 && (
                     <div className="mt-2 text-sm space-y-1">
                       <p className="text-blue-400">
@@ -546,13 +560,22 @@ function NewOperationContent() {
                       />
                     </div>
                   </div>
-                  <input
-                    type="text"
-                    value={bet.eventName}
-                    onChange={(e) => handleBetChange(index, 'eventName', e.target.value, 'freebet')}
-                    placeholder={!selectedBookmaker?.sameEvent ? 'Evento (DISTINTO requerido)' : 'Evento (opcional)'}
-                    className="input mt-3"
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <input
+                      type="text"
+                      value={bet.eventName}
+                      onChange={(e) => handleBetChange(index, 'eventName', e.target.value, 'freebet')}
+                      placeholder={!selectedBookmaker?.sameEvent ? 'Evento (DISTINTO requerido)' : 'Evento (ej: Liverpool vs Chelsea)'}
+                      className="input"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={bet.eventDate}
+                      onChange={(e) => handleBetChange(index, 'eventDate', e.target.value, 'freebet')}
+                      className="input"
+                      title="Fecha y hora del partido"
+                    />
+                  </div>
                   {parseFloat(bet.oddsLay) > 0 && parseFloat(bet.oddsBack) > 0 && (
                     <div className="mt-2 text-sm space-y-1">
                       <p className="text-blue-400">

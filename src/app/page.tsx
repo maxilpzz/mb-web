@@ -104,6 +104,9 @@ export default function Home() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Matched Betting Dashboard</h1>
         <div className="flex items-center gap-4">
+          <Link href="/live" className="btn btn-danger">
+            En Vivo
+          </Link>
           <Link href="/stats" className="btn btn-secondary">
             Estadísticas
           </Link>

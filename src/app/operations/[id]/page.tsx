@@ -17,6 +17,7 @@ interface Bet {
   result: string | null
   actualProfit: number | null
   eventName: string | null
+  eventDate: string | null
 }
 
 interface Deposit {
@@ -324,6 +325,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     oddsBack: '',
     oddsLay: '',
     eventName: '',
+    eventDate: '',
     noLay: false
   })
   const [showAddQualifying, setShowAddQualifying] = useState(false)
@@ -332,7 +334,8 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     stake: '',
     oddsBack: '',
     oddsLay: '',
-    eventName: ''
+    eventName: '',
+    eventDate: ''
   })
   const [showQuickProfit, setShowQuickProfit] = useState(false)
   const [quickProfitAmount, setQuickProfitAmount] = useState('')
@@ -406,13 +409,14 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
         stake: parseFloat(freebetForm.stake),
         oddsBack: freebetForm.noLay ? 0 : parseFloat(freebetForm.oddsBack),
         oddsLay: freebetForm.noLay ? 0 : parseFloat(freebetForm.oddsLay),
-        eventName: freebetForm.eventName || null
+        eventName: freebetForm.eventName || null,
+        eventDate: freebetForm.eventDate || null
       })
     })
 
     if (res.ok) {
       setShowAddFreebet(false)
-      setFreebetForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '', noLay: false })
+      setFreebetForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '', eventDate: '', noLay: false })
       fetchOperation()
     } else {
       alert('Error al añadir freebet')
@@ -435,13 +439,14 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
         stake: parseFloat(qualifyingForm.stake),
         oddsBack: parseFloat(qualifyingForm.oddsBack),
         oddsLay: parseFloat(qualifyingForm.oddsLay),
-        eventName: qualifyingForm.eventName || null
+        eventName: qualifyingForm.eventName || null,
+        eventDate: qualifyingForm.eventDate || null
       })
     })
 
     if (res.ok) {
       setShowAddQualifying(false)
-      setQualifyingForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '' })
+      setQualifyingForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '', eventDate: '' })
       fetchOperation()
     } else {
       alert('Error al añadir qualifying')
@@ -1081,15 +1086,26 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                 </div>
               )}
-              <div>
-                <label className="label">Evento (opcional)</label>
-                <input
-                  type="text"
-                  value={freebetForm.eventName}
-                  onChange={(e) => setFreebetForm({ ...freebetForm, eventName: e.target.value })}
-                  className="input"
-                  placeholder="Real Madrid vs Barcelona"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Evento (opcional)</label>
+                  <input
+                    type="text"
+                    value={freebetForm.eventName}
+                    onChange={(e) => setFreebetForm({ ...freebetForm, eventName: e.target.value })}
+                    className="input"
+                    placeholder="Real Madrid vs Barcelona"
+                  />
+                </div>
+                <div>
+                  <label className="label">Fecha y hora del partido</label>
+                  <input
+                    type="datetime-local"
+                    value={freebetForm.eventDate}
+                    onChange={(e) => setFreebetForm({ ...freebetForm, eventDate: e.target.value })}
+                    className="input"
+                  />
+                </div>
               </div>
             </div>
             <div className="flex gap-4 mt-6">
@@ -1103,7 +1119,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
               <button
                 onClick={() => {
                   setShowAddFreebet(false)
-                  setFreebetForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '', noLay: false })
+                  setFreebetForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '', eventDate: '', noLay: false })
                 }}
                 disabled={addingFreebet}
                 className="btn btn-secondary flex-1"
@@ -1156,15 +1172,26 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
                   />
                 </div>
               </div>
-              <div>
-                <label className="label">Evento (opcional)</label>
-                <input
-                  type="text"
-                  value={qualifyingForm.eventName}
-                  onChange={(e) => setQualifyingForm({ ...qualifyingForm, eventName: e.target.value })}
-                  className="input"
-                  placeholder="Real Madrid vs Barcelona"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Evento (opcional)</label>
+                  <input
+                    type="text"
+                    value={qualifyingForm.eventName}
+                    onChange={(e) => setQualifyingForm({ ...qualifyingForm, eventName: e.target.value })}
+                    className="input"
+                    placeholder="Real Madrid vs Barcelona"
+                  />
+                </div>
+                <div>
+                  <label className="label">Fecha y hora del partido</label>
+                  <input
+                    type="datetime-local"
+                    value={qualifyingForm.eventDate}
+                    onChange={(e) => setQualifyingForm({ ...qualifyingForm, eventDate: e.target.value })}
+                    className="input"
+                  />
+                </div>
               </div>
             </div>
             <div className="flex gap-4 mt-6">
@@ -1178,7 +1205,7 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
               <button
                 onClick={() => {
                   setShowAddQualifying(false)
-                  setQualifyingForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '' })
+                  setQualifyingForm({ stake: '', oddsBack: '', oddsLay: '', eventName: '', eventDate: '' })
                 }}
                 disabled={addingQualifying}
                 className="btn btn-secondary flex-1"
