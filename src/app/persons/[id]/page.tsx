@@ -458,7 +458,7 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
               {person.operations.map(op => (
                 <Link
                   key={op.id}
-                  href={`/operations/${op.id}`}
+                  href={`/operations/${op.id}?fromPerson=${person.id}`}
                   className="block p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   <div className="flex justify-between items-start">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { calculateOwes, OwesBreakdown } from '@/lib/calculations'
 import Breadcrumbs from '@/components/Breadcrumbs'
 
@@ -673,6 +673,8 @@ function BetCard({
 export default function OperationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromPersonId = searchParams.get('fromPerson')
   const [operation, setOperation] = useState<Operation | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -1052,11 +1054,20 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-3xl mx-auto">
-        <Breadcrumbs items={[
-          { label: 'Dashboard', href: '/' },
-          { label: 'Operaciones', href: '/operations' },
-          { label: `${operation.person.name} - ${operation.bookmaker.name}` }
-        ]} />
+        <Breadcrumbs items={
+          fromPersonId
+            ? [
+                { label: 'Dashboard', href: '/' },
+                { label: 'Personas', href: '/persons' },
+                { label: operation.person.name, href: `/persons/${fromPersonId}` },
+                { label: operation.bookmaker.name }
+              ]
+            : [
+                { label: 'Dashboard', href: '/' },
+                { label: 'Operaciones', href: '/operations' },
+                { label: `${operation.person.name} - ${operation.bookmaker.name}` }
+              ]
+        } />
 
         <div className="flex items-center justify-between mb-8">
           <div>
