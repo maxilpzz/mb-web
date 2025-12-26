@@ -59,6 +59,9 @@ export async function GET() {
         return sum + op.bets.reduce((betSum, bet) => betSum + (bet.actualProfit || 0), 0)
       }, 0)
 
+      // Beneficio neto = beneficio bruto - comisiones pagadas
+      const netProfit = totalProfit - totalCommissionPaid
+
       // Contar operaciones pendientes (no completadas ni canceladas)
       const pendingOperations = person.operations.filter(
         op => op.status !== 'completed' && op.status !== 'cancelled'
@@ -94,6 +97,7 @@ export async function GET() {
         totalCommissionPaid,
         balance, // Positivo = te debe, Negativo = le debes
         totalProfit,
+        netProfit, // Beneficio neto = totalProfit - comisiones pagadas
         operationsCount: person.operations.length,
         pendingOperations,
         availableBookmakers,

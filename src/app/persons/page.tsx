@@ -18,6 +18,7 @@ interface Person {
   totalCommissionPaid: number
   balance: number
   totalProfit: number
+  netProfit: number
   operationsCount: number
   pendingOperations: number
   availableBookmakers: number
@@ -489,7 +490,7 @@ export default function PersonsPage() {
                         </button>
                       </div>
                     </div>
-                    <div className={`mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm ${isCompleted ? 'opacity-70' : ''}`}>
+                    <div className={`mt-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-sm ${isCompleted ? 'opacity-70' : ''}`}>
                       <div>
                         <p className="text-gray-400">Bizum enviado</p>
                         <p className="font-medium">{formatMoney(person.totalBizumSent)}</p>
@@ -499,17 +500,21 @@ export default function PersonsPage() {
                         <p className="font-medium">{formatMoney(person.totalMoneyReturned)}</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Comisiones pagadas</p>
-                        <p className="font-medium">{formatMoney(person.totalCommissionPaid)}</p>
+                        <p className="text-gray-400">Beneficio bruto</p>
+                        <p className="font-medium text-gray-300">{formatMoney(person.totalProfit)}</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Beneficio generado</p>
-                        <p className={`font-medium ${
+                        <p className="text-gray-400">Comisiones pagadas</p>
+                        <p className="font-medium text-orange-400">-{formatMoney(person.totalCommissionPaid)}</p>
+                      </div>
+                      <div className="col-span-2 md:col-span-1 border-l-2 border-gray-600 pl-4">
+                        <p className="text-gray-300 font-medium">Mi beneficio neto</p>
+                        <p className={`text-lg font-bold ${
                           isCompleted
                             ? 'text-gray-400'
-                            : person.totalProfit >= 0 ? 'positive' : 'negative'
+                            : person.netProfit >= 0 ? 'positive' : 'negative'
                         }`}>
-                          {formatMoney(person.totalProfit)}
+                          {formatMoney(person.netProfit)}
                         </p>
                       </div>
                     </div>
