@@ -38,7 +38,6 @@ interface Person {
   operations: Operation[]
   totals: {
     totalDebt: number
-    totalDebtBeforeCommission: number
     totalProfit: number
     totalBizumSent: number
     totalMoneyReturned: number
@@ -198,23 +197,23 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
         {/* Resumen general */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="card">
-            <p className="text-sm text-gray-400">Dinero en casas</p>
-            <p className="text-2xl font-bold text-warning">
-              {formatMoney(person.totals.totalDebtBeforeCommission)}
-            </p>
-            {person.commissionPaid > 0 && (
-              <p className="text-xs text-purple-400 mt-1">
-                - {formatMoney(person.commissionPaid)} comisión
-              </p>
-            )}
-          </div>
-          <div className="card">
             <p className="text-sm text-gray-400">Te debe</p>
             <p className={`text-2xl font-bold ${person.totals.totalDebt > 0 ? 'text-loss' : 'text-profit'}`}>
               {formatMoney(person.totals.totalDebt)}
             </p>
-            {person.totals.totalDebt === 0 && person.totals.totalDebtBeforeCommission > 0 && (
+            {person.totals.totalDebt === 0 && person.operations.length > 0 && (
               <p className="text-xs text-profit mt-1">Liquidado</p>
+            )}
+          </div>
+          <div className="card">
+            <p className="text-sm text-gray-400">Comisión</p>
+            <p className="text-2xl font-bold text-purple-400">
+              {formatMoney(person.totals.totalCommissionDue)}
+            </p>
+            {person.commissionPaid > 0 && (
+              <p className="text-xs text-green-400 mt-1">
+                ✓ Pagada: {formatMoney(person.commissionPaid)}
+              </p>
             )}
           </div>
           <div className="card">
@@ -232,57 +231,56 @@ export default function PersonDetailPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Comisión */}
-        <div className="card mb-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Comisión</h2>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-purple-400">
-                  {formatMoney(person.totals.totalCommissionDue)}
+        {/* Comisión - Solo mostrar si hay comisión configurada */}
+        {person.totals.totalCommissionDue > 0 && (
+          <div className="card mb-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-lg font-semibold mb-2">Comisión</h2>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-3xl font-bold text-purple-400">
+                    {formatMoney(person.totals.totalCommissionDue)}
+                  </p>
+                  {person.commissionType === 'per_operation' && (
+                    <span className="text-sm text-gray-400">
+                      (por operación)
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {person.commissionType === 'per_operation'
+                    ? 'Pago por cada operación completada'
+                    : 'Pago único por todas las casas'}
                 </p>
-                {person.commissionType === 'per_operation' && (
-                  <span className="text-sm text-gray-400">
-                    ({formatMoney(person.commission)} × {person.totals.completedOperations} casas)
-                  </span>
+                {person.commissionPaid > 0 && (
+                  <p className="text-sm text-profit mt-2">
+                    ✓ Pagado: {formatMoney(person.commissionPaid)}
+                  </p>
+                )}
+                {commissionRemaining > 0 && (
+                  <p className="text-sm text-yellow-400 mt-1">
+                    Pendiente: {formatMoney(commissionRemaining)}
+                  </p>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {person.commissionType === 'per_operation'
-                  ? 'Pago por cada operación completada'
-                  : 'Pago único por todas las casas'}
-              </p>
-              {person.commissionPaid > 0 && (
-                <p className="text-sm text-profit mt-2">
-                  ✓ Pagado: {formatMoney(person.commissionPaid)}
-                </p>
-              )}
-              {commissionRemaining > 0 && person.totals.totalDebtBeforeCommission > 0 && (
-                <p className="text-sm text-gray-400 mt-1">
-                  Tras pagar comisión, te deberá: {formatMoney(Math.max(0, person.totals.totalDebtBeforeCommission - person.totals.totalCommissionDue))}
-                </p>
-              )}
-            </div>
-            <div className="text-right space-y-2">
-              {commissionRemaining > 0 && person.totals.totalDebtBeforeCommission > 0 ? (
+              <div className="text-right space-y-2">
+                {person.commissionPaid >= person.totals.totalCommissionDue ? (
+                  <span className="badge badge-completed text-lg px-4 py-2">✓ Pagada</span>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    Paga desde cada operación
+                  </p>
+                )}
                 <button
-                  onClick={handlePayCommission}
-                  className="btn btn-primary"
+                  onClick={() => setEditing(true)}
+                  className="btn btn-secondary text-sm block w-full"
                 >
-                  Pagar comisión ({formatMoney(commissionRemaining)})
+                  Cambiar comisión
                 </button>
-              ) : person.totals.totalCommissionDue > 0 && person.commissionPaid >= person.totals.totalCommissionDue ? (
-                <span className="badge badge-completed text-lg px-4 py-2">✓ Pagada</span>
-              ) : null}
-              <button
-                onClick={() => setEditing(true)}
-                className="btn btn-secondary text-sm block w-full"
-              >
-                Cambiar comisión
-              </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Info editable */}
         <div className="card mb-6">

@@ -974,9 +974,10 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
       }
     }
 
-    // Si el método es 'deduct', marcar el dinero restante como devuelto
+    // Si el método es 'deduct', marcar la deuda completa como devuelta
+    // (la comisión se descontó de lo que físicamente devolvió, pero la deuda está saldada)
     if (method === 'deduct') {
-      const remainingDebt = Math.max(0, calculateOwes(operation.bets.map(bet => ({
+      const owesData = calculateOwes(operation.bets.map(bet => ({
         betType: bet.betType,
         stake: bet.stake,
         oddsBack: bet.oddsBack,
@@ -984,16 +985,14 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
         liability: bet.liability,
         result: bet.result,
         actualProfit: bet.actualProfit
-      }))).totalOwes - operation.moneyReturned)
+      })))
 
-      // El nuevo monto devuelto es: lo anterior + (deuda - comisión)
-      const newMoneyReturned = operation.moneyReturned + Math.max(0, remainingDebt - amount)
-
+      // Marcar toda la deuda como devuelta (la comisión ya se descontó)
       await fetch(`/api/operations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          moneyReturned: newMoneyReturned
+          moneyReturned: owesData.totalOwes
         })
       })
     }

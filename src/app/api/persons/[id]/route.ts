@@ -66,9 +66,10 @@ export async function GET(
     })
 
     // Calcular totales globales de la persona
-    // Restar commissionPaid porque se "paga" de lo que te debe
-    const totalDebtBeforeCommission = operationsWithTotals.reduce((sum, op) => sum + op.remainingDebt, 0)
-    const totalDebt = Math.max(0, totalDebtBeforeCommission - person.commissionPaid)
+    // NO restamos commissionPaid porque:
+    // - Si se pagó "descontando de deuda": la deuda ya está marcada como devuelta
+    // - Si se pagó "por Bizum": la comisión es un pago separado, no reduce la deuda
+    const totalDebt = operationsWithTotals.reduce((sum, op) => sum + op.remainingDebt, 0)
     const totalProfit = operationsWithTotals.reduce((sum, op) => sum + op.totalProfit, 0)
     const totalBizumSent = person.operations.reduce((sum, op) => sum + op.bizumSent, 0)
     const totalMoneyReturned = person.operations.reduce((sum, op) => sum + op.moneyReturned, 0)
@@ -90,7 +91,6 @@ export async function GET(
       operations: operationsWithTotals,
       totals: {
         totalDebt,
-        totalDebtBeforeCommission, // Antes de restar comisión
         totalProfit,
         totalBizumSent,
         totalMoneyReturned,
