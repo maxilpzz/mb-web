@@ -40,10 +40,19 @@ interface Bookmaker {
   maxBonus: number
 }
 
+interface Person {
+  id: string
+  name: string
+  commissionType: 'fixed_total' | 'per_operation'
+  commission: number
+  commissionPaid: number
+}
+
 interface Operation {
   id: string
-  person: { id: string; name: string; commission: number }
+  person: Person
   bookmaker: Bookmaker
+  commission: number // Comisión específica de esta operación (para per_operation)
   status: string
   bizumSent: number
   moneyReturned: number
@@ -176,6 +185,220 @@ function OwesDisplay({
         </div>
       )}
     </div>
+  )
+}
+
+// Componente para la sección de comisiones
+function CommissionSection({
+  operation,
+  owesData,
+  formatMoney,
+  onPayCommission
+}: {
+  operation: Operation
+  owesData: OwesBreakdown
+  formatMoney: (amount: number) => string
+  onPayCommission: (amount: number, method: 'deduct' | 'bizum') => void
+}) {
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<'deduct' | 'bizum'>('deduct')
+  const [customAmount, setCustomAmount] = useState('')
+
+  // Determinar la comisión según el tipo
+  const isPerOperation = operation.person.commissionType === 'per_operation'
+  const commissionDue = isPerOperation ? operation.commission : operation.person.commission
+  const commissionPaid = isPerOperation ? operation.commissionPaid : operation.person.commissionPaid
+  const commissionPending = Math.max(0, commissionDue - commissionPaid)
+
+  // Calcular deuda restante
+  const remainingDebt = Math.max(0, owesData.totalOwes - operation.moneyReturned)
+  const hasDebt = remainingDebt > 0.01
+  const allBetsResolved = owesData.pendingBets === 0
+
+  // Si no hay comisión pendiente, no mostrar nada
+  if (commissionPending <= 0) {
+    return (
+      <div className="bg-green-900/20 border border-green-700 rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-green-400 text-xl">✓</span>
+          <div>
+            <p className="font-medium text-green-400">Comisión pagada</p>
+            <p className="text-sm text-gray-400">
+              {formatMoney(commissionPaid)} {isPerOperation ? '(esta operación)' : '(total)'}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Si hay apuestas pendientes, solo mostrar info
+  if (!allBetsResolved) {
+    return (
+      <div className="bg-gray-700/50 border border-gray-600 rounded-lg p-4">
+        <p className="text-gray-400 text-sm">Comisión pendiente</p>
+        <p className="text-xl font-bold text-purple-400">{formatMoney(commissionPending)}</p>
+        <p className="text-xs text-gray-500 mt-1">
+          Resuelve las apuestas para pagar la comisión
+        </p>
+      </div>
+    )
+  }
+
+  const handleConfirmPayment = () => {
+    const amount = customAmount ? parseFloat(customAmount) : commissionPending
+    onPayCommission(amount, paymentMethod)
+    setShowPaymentModal(false)
+    setCustomAmount('')
+  }
+
+  return (
+    <>
+      <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-4">
+        <div className="flex justify-between items-start mb-3">
+          <div>
+            <p className="text-gray-400 text-sm">Comisión pendiente</p>
+            <p className="text-xl font-bold text-purple-400">{formatMoney(commissionPending)}</p>
+            {isPerOperation && (
+              <p className="text-xs text-gray-500">Por esta casa de apuestas</p>
+            )}
+          </div>
+        </div>
+
+        {/* Resumen de la situación */}
+        <div className="bg-gray-800 rounded-lg p-3 mb-3 text-sm">
+          <div className="flex justify-between mb-1">
+            <span className="text-gray-400">Te debe ({operation.bookmaker.name}):</span>
+            <span className={hasDebt ? 'text-red-400' : 'text-green-400'}>
+              {formatMoney(remainingDebt)}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-400">Comisión acordada:</span>
+            <span className="text-purple-400">{formatMoney(commissionPending)}</span>
+          </div>
+          <div className="border-t border-gray-700 mt-2 pt-2 flex justify-between font-medium">
+            <span className="text-gray-300">
+              {hasDebt ? 'Te devolverá:' : 'Le enviarás:'}
+            </span>
+            <span className={hasDebt ? 'text-green-400' : 'text-orange-400'}>
+              {hasDebt
+                ? formatMoney(Math.max(0, remainingDebt - commissionPending))
+                : formatMoney(commissionPending)
+              }
+            </span>
+          </div>
+        </div>
+
+        {/* Botón para pagar */}
+        <button
+          onClick={() => setShowPaymentModal(true)}
+          className="btn btn-primary w-full"
+        >
+          💰 Pagar comisión
+        </button>
+      </div>
+
+      {/* Modal de pago */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="card max-w-md mx-4 w-full">
+            <h2 className="text-xl font-bold mb-4">Pagar comisión a {operation.person.name}</h2>
+
+            <div className="space-y-4">
+              {/* Info */}
+              <div className="bg-gray-700 rounded-lg p-3 text-sm">
+                <p className="text-gray-400">Comisión pendiente: <span className="text-purple-400 font-medium">{formatMoney(commissionPending)}</span></p>
+                <p className="text-gray-400">Te debe: <span className={hasDebt ? 'text-red-400' : 'text-green-400'} >{formatMoney(remainingDebt)}</span></p>
+              </div>
+
+              {/* Opciones de pago */}
+              <div>
+                <p className="label mb-2">¿Cómo quieres pagar?</p>
+                <div className="space-y-2">
+                  {hasDebt && (
+                    <button
+                      onClick={() => setPaymentMethod('deduct')}
+                      className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${
+                        paymentMethod === 'deduct'
+                          ? 'border-purple-500 bg-purple-900/30'
+                          : 'border-gray-600 hover:border-gray-500'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">💸</span>
+                        <div>
+                          <p className="font-medium">Descontar de su deuda</p>
+                          <p className="text-sm text-gray-400">
+                            Te devolverá {formatMoney(Math.max(0, remainingDebt - commissionPending))} en vez de {formatMoney(remainingDebt)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setPaymentMethod('bizum')}
+                    className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${
+                      paymentMethod === 'bizum'
+                        ? 'border-purple-500 bg-purple-900/30'
+                        : 'border-gray-600 hover:border-gray-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📱</span>
+                      <div>
+                        <p className="font-medium">Pagar por Bizum</p>
+                        <p className="text-sm text-gray-400">
+                          {hasDebt
+                            ? `Te devuelve ${formatMoney(remainingDebt)} y tú le envías ${formatMoney(commissionPending)}`
+                            : `Tú le envías ${formatMoney(commissionPending)}`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Cantidad personalizada (opcional) */}
+              <div>
+                <label className="label">Cantidad a pagar (opcional)</label>
+                <input
+                  type="number"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  placeholder={commissionPending.toString()}
+                  className="input"
+                  step="0.01"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Déjalo vacío para pagar {formatMoney(commissionPending)} completos
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-6">
+              <button
+                onClick={handleConfirmPayment}
+                className="btn btn-primary flex-1"
+              >
+                Confirmar pago
+              </button>
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false)
+                  setCustomAmount('')
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -713,20 +936,67 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
-  const handlePayCommission = async (amount: number) => {
-    const res = await fetch(`/api/operations/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        commissionPaid: amount
-      })
-    })
+  const handlePayCommission = async (amount: number, method: 'deduct' | 'bizum') => {
+    if (!operation) return
 
-    if (res.ok) {
-      fetchOperation()
+    const isPerOperation = operation.person.commissionType === 'per_operation'
+
+    // Si es per_operation, actualizar Operation.commissionPaid
+    // Si es fixed_total, actualizar Person.commissionPaid
+    if (isPerOperation) {
+      const res = await fetch(`/api/operations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commissionPaid: operation.commissionPaid + amount
+        })
+      })
+
+      if (!res.ok) {
+        alert('Error al pagar comisión')
+        return
+      }
     } else {
-      alert('Error al pagar comisión')
+      // Para fixed_total, actualizar en Person
+      const res = await fetch(`/api/persons/${operation.person.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commissionPaid: operation.person.commissionPaid + amount
+        })
+      })
+
+      if (!res.ok) {
+        alert('Error al pagar comisión')
+        return
+      }
     }
+
+    // Si el método es 'deduct', marcar el dinero restante como devuelto
+    if (method === 'deduct') {
+      const remainingDebt = Math.max(0, calculateOwes(operation.bets.map(bet => ({
+        betType: bet.betType,
+        stake: bet.stake,
+        oddsBack: bet.oddsBack,
+        oddsLay: bet.oddsLay,
+        liability: bet.liability,
+        result: bet.result,
+        actualProfit: bet.actualProfit
+      }))).totalOwes - operation.moneyReturned)
+
+      // El nuevo monto devuelto es: lo anterior + (deuda - comisión)
+      const newMoneyReturned = operation.moneyReturned + Math.max(0, remainingDebt - amount)
+
+      await fetch(`/api/operations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          moneyReturned: newMoneyReturned
+        })
+      })
+    }
+
+    fetchOperation()
   }
 
   const formatMoney = (amount: number) => {
@@ -839,36 +1109,34 @@ export default function OperationDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           {!editing ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-gray-400">Bizum enviado</p>
-                <p className="text-xl font-bold">{formatMoney(operation.bizumSent)}</p>
+            <div className="space-y-4">
+              {/* Fila principal de datos */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-400">Bizum enviado</p>
+                  <p className="text-xl font-bold">{formatMoney(operation.bizumSent)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Devuelto</p>
+                  <p className="text-xl font-bold">{formatMoney(operation.moneyReturned)}</p>
+                </div>
+                <OwesDisplay
+                  owesData={owesData}
+                  moneyReturned={operation.moneyReturned}
+                  formatMoney={formatMoney}
+                  onMarkReturned={handleMarkReturned}
+                />
               </div>
-              <div>
-                <p className="text-sm text-gray-400">Devuelto</p>
-                <p className="text-xl font-bold">{formatMoney(operation.moneyReturned)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Comisión</p>
-                <p className="text-xl font-bold">{formatMoney(operation.commissionPaid)}</p>
-                {operation.person.commission > 0 && operation.commissionPaid < operation.person.commission && (
-                  <button
-                    onClick={() => handlePayCommission(operation.person.commission)}
-                    className="btn btn-primary text-xs mt-2"
-                  >
-                    Pagar {formatMoney(operation.person.commission)}
-                  </button>
-                )}
-                {operation.commissionPaid > 0 && operation.commissionPaid >= operation.person.commission && (
-                  <p className="text-xs text-green-500 mt-1">✓ Pagada</p>
-                )}
-              </div>
-              <OwesDisplay
-                owesData={owesData}
-                moneyReturned={operation.moneyReturned}
-                formatMoney={formatMoney}
-                onMarkReturned={handleMarkReturned}
-              />
+
+              {/* Sección de comisiones */}
+              {(operation.person.commission > 0 || operation.commission > 0) && (
+                <CommissionSection
+                  operation={operation}
+                  owesData={owesData}
+                  formatMoney={formatMoney}
+                  onPayCommission={handlePayCommission}
+                />
+              )}
             </div>
           ) : (
             <div className="space-y-4">
